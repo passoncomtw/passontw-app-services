@@ -1,11 +1,10 @@
-import { Text, Button } from '@react-navigation/elements';
+import { Text } from '@react-navigation/elements';
 import { StyleSheet, View } from 'react-native';
 
-export function NotFound() {
+export default function InitialScreen() {
   return (
     <View style={styles.container}>
-      <Text>404</Text>
-      <Button screen="HomeTabs">Go to Home</Button>
+      <Text>Initial Screen</Text>
     </View>
   );
 }

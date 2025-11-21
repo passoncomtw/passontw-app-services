@@ -3,13 +3,17 @@ import { createStaticNavigation, StaticParamList } from '@react-navigation/nativ
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Platform } from 'react-native';
 
-import { Explore } from './screens/Explore';
-import { Home } from './screens/Home';
-import { NotFound } from './screens/NotFound';
+import Explore from './screens/ExploreScreen';
+import Home from './screens/HomeScreen';
+import NotFound from './screens/NotFoundScreen';
 
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
+import PublicScreen from './screens/PublicScreen';
+import LoginScreen from './screens/LoginScreen';
+import InitialScreen from './screens/InitialScreen';
+
 
 const HomeTabs = createBottomTabNavigator({
   screens: {
@@ -62,7 +66,38 @@ const RootStack = createNativeStackNavigator({
   },
 });
 
-export const Navigation = createStaticNavigation(RootStack);
+const PublicStack = createNativeStackNavigator({
+  screens: {
+    Public: {
+      screen: PublicScreen,
+      options: {
+        headerShown: true,
+        title: 'Public',
+      },
+    },
+    Login: {
+      screen: LoginScreen,
+      options: {
+        headerShown: true,
+        title: 'Login',
+      },
+    },
+  },
+});
+
+const InitialStack = createNativeStackNavigator({
+  screens: {
+    Initial: {
+      screen: InitialScreen,
+      options: {
+        headerShown: true,
+        title: 'Initial',
+      },
+    },
+    
+  },
+});
+export const Navigation = createStaticNavigation(InitialStack);
 
 type RootStackParamList = StaticParamList<typeof RootStack>;
 
