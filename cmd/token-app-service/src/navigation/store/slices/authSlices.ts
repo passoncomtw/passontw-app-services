@@ -1,5 +1,4 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { AppThunk } from '../configureStore';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -44,32 +43,5 @@ const authSlice = createSlice({
 });
 
 export const { loginStart, loginSuccess, loginFailure, logout } = authSlice.actions;
-
-/**
- * Thunk Action 範例
- * 處理非同步登入邏輯
- */
-export const loginUser = (username: string, password: string): AppThunk => 
-  async (dispatch) => {
-    try {
-      dispatch(loginStart());
-      
-      // 模擬 API 呼叫
-      const response = await fetch('https://api.example.com/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('登入失敗');
-      }
-      
-      const user = await response.json();
-      dispatch(loginSuccess(user));
-    } catch (error) {
-      dispatch(loginFailure(error instanceof Error ? error.message : '未知錯誤'));
-    }
-  };
 
 export default authSlice.reducer;

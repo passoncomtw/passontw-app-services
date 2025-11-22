@@ -1,6 +1,9 @@
 import { configureStore, ThunkAction, Action } from '@reduxjs/toolkit';
-import thunk from 'redux-thunk';
+import createSagaMiddleware from 'redux-saga';
 import authReducer from './slices/authSlices';
+import rootSaga from './sagas';
+
+const sagaMiddleware = createSagaMiddleware();
 
 /**
  * 配置 Redux Store
@@ -25,9 +28,11 @@ export const store = configureStore({
         ignoredActionPaths: [],
         ignoredPaths: [],
       },
-    }),
+    }).concat(sagaMiddleware),
   devTools: process.env.NODE_ENV !== 'production', // 只在開發環境啟用 DevTools
 });
+
+sagaMiddleware.run(rootSaga);
 
 /**
  * 從 store 本身推斷出 RootState 和 AppDispatch 型別
