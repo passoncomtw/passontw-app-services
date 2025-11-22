@@ -1,12 +1,21 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, Pressable } from 'react-native';
 
 import { HelloWave } from '@/components/HelloWave';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useAppDispatch, useAppSelector } from '@/navigation/store/hooks';
+import { logoutRequest } from '@/navigation/store/actions/authActions';
 
 export default function Home() {
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
+
+  const handleLogout = () => {
+    dispatch(logoutRequest());
+  };
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -17,9 +26,32 @@ export default function Home() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
+        <ThemedText type="title">Welcome{user ? `, ${user.name}` : ''}!</ThemedText>
         <HelloWave />
       </ThemedView>
+
+      {/* 用戶資訊區塊 */}
+      <ThemedView style={styles.userContainer}>
+        <ThemedText type="subtitle">使用者資訊</ThemedText>
+        {user && (
+          <ThemedView style={styles.userInfo}>
+            <ThemedText>ID: {user.id}</ThemedText>
+            <ThemedText>名稱: {user.name}</ThemedText>
+          </ThemedView>
+        )}
+        
+        {/* 登出按鈕 */}
+        <Pressable 
+          style={({ pressed }) => [
+            styles.logoutButton,
+            pressed && styles.logoutButtonPressed
+          ]}
+          onPress={handleLogout}
+        >
+          <ThemedText style={styles.logoutButtonText}>登出</ThemedText>
+        </Pressable>
+      </ThemedView>
+
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
         <ThemedText>
@@ -71,5 +103,33 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     position: 'absolute',
+  },
+  userContainer: {
+    gap: 12,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+  },
+  userInfo: {
+    gap: 8,
+    paddingVertical: 8,
+  },
+  logoutButton: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  logoutButtonPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.98 }],
+  },
+  logoutButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -27,6 +27,21 @@ interface LoginResponse {
 }
 
 async function loginApi(credentials: LoginCredentials): Promise<LoginResponse> {
+  // 模擬 API 延遲
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // 模擬登入驗證
+  if (credentials.username === 'demo' && credentials.password === 'password') {
+    return {
+      id: '1',
+      name: 'Demo User',
+      token: 'mock-jwt-token-' + Date.now(),
+    };
+  }
+  
+  throw new Error('使用者名稱或密碼錯誤');
+  
+  /* 實際的 API 呼叫範例：
   const response = await fetch('https://api.example.com/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -38,6 +53,7 @@ async function loginApi(credentials: LoginCredentials): Promise<LoginResponse> {
   }
 
   return response.json();
+  */
 }
 
 /**
@@ -53,9 +69,12 @@ function* loginSaga(action: PayloadAction<LoginCredentials>) {
     const user: LoginResponse = yield call(loginApi, action.payload);
 
     // 可以在這裡處理其他副作用
-    // 例如：儲存 token 到 localStorage
+    // 例如：儲存 token 到 localStorage (Web) 或 AsyncStorage (React Native)
     if (user.token) {
-      localStorage.setItem('authToken', user.token);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('authToken', user.token);
+      }
+      // React Native: await AsyncStorage.setItem('authToken', user.token);
     }
 
     // 登入成功
@@ -75,15 +94,22 @@ function* logoutSaga() {
   try {
     // 可以在這裡處理登出的副作用
     // 例如：清除 token、呼叫登出 API 等
-    localStorage.removeItem('authToken');
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('authToken');
+    }
+    // React Native: await AsyncStorage.removeItem('authToken');
     
     // 延遲一下讓使用者看到登出動畫（可選）
     yield delay(300);
     
     // 觸發登出 action
     yield put({ type: 'auth/logout' });
+    
+    console.log('✅ 登出成功');
   } catch (error) {
-    console.error('登出失敗', error);
+    console.error('❌ 登出失敗', error);
+    // 即使失敗也執行登出
+    yield put({ type: 'auth/logout' });
   }
 }
 
