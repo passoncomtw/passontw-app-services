@@ -1,17 +1,23 @@
 import { configureStore, ThunkAction, Action } from '@reduxjs/toolkit';
 import createSagaMiddleware from 'redux-saga';
+import devToolsEnhancer from 'redux-devtools-expo-dev-plugin';
 import authReducer from './slices/authSlices';
 import rootSaga from './sagas';
 
+/**
+ * 創建 Saga 中間件
+ */
 const sagaMiddleware = createSagaMiddleware();
 
 /**
  * 配置 Redux Store
  * 
- * 使用 Redux Toolkit 的 configureStore，自動整合了：
- * - redux-thunk 中間件（用於處理非同步邏輯）
- * - Redux DevTools Extension（開發環境下的除錯工具）
- * - 序列化檢查中間件（防止 non-serializable 值進入 store）
+ * 使用 Redux Toolkit 的 configureStore，整合了：
+ * - redux-thunk 中間件（用於簡單的非同步邏輯）
+ * - redux-saga 中間件（用於複雜的非同步流程控制）
+ * - Expo Redux DevTools Plugin（開發環境下的除錯工具）
+ * 
+ * 參考文檔：https://docs.expo.dev/debugging/devtools-plugins/#redux
  */
 export const store = configureStore({
   reducer: {
@@ -29,7 +35,11 @@ export const store = configureStore({
         ignoredPaths: [],
       },
     }).concat(sagaMiddleware),
-  devTools: process.env.NODE_ENV !== 'production', // 只在開發環境啟用 DevTools
+  // ⭐ 重要: 禁用內建的 devTools，改用 Expo DevTools Plugin
+  devTools: false,
+  // ⭐ 添加 Expo Redux DevTools enhancer
+  enhancers: (getDefaultEnhancers) => 
+    getDefaultEnhancers().concat(devToolsEnhancer()),
 });
 
 sagaMiddleware.run(rootSaga);

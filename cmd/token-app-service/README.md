@@ -1,61 +1,889 @@
-# Starter Template with React Navigation
+# Token App Service
 
-This is a minimal starter template for React Native apps using Expo and React Navigation.
+基於 Expo 和 React Navigation 的 React Native 應用程式，整合 Redux Toolkit、Redux Saga 進行狀態管理和非同步流程控制。
 
-## Launch your own
+## 📋 目錄
 
-[![Launch with Expo](https://github.com/expo/examples/blob/master/.gh-assets/launch.svg?raw=true)](https://launch.expo.dev/?github=https://github.com/expo/examples/tree/master/with-react-navigation)
-
-It includes the following:
-
-- Example [Native Stack](https://reactnavigation.org/docs/native-stack-navigator) with a nested [Bottom Tab](https://reactnavigation.org/docs/bottom-tab-navigator)
-- Web support with [React Native for Web](https://necolas.github.io/react-native-web/)
-- TypeScript support and configured for React Navigation
-- Automatic [deep link](https://reactnavigation.org/docs/deep-linking) and [URL handling configuration](https://reactnavigation.org/docs/configuring-links)
-- Theme support [based on system appearance](https://reactnavigation.org/docs/themes/#using-the-operating-system-preferences)
-- Expo [Development Build](https://docs.expo.dev/develop/development-builds/introduction/) with [Continuous Native Generation](https://docs.expo.dev/workflow/continuous-native-generation/)
-- Edge-to-edge configured on Android with [`react-native-edge-to-edge`](https://www.npmjs.com/package/react-native-edge-to-edge)
-
-## Getting Started
-
-1. Create a new project using this template:
-
-   ```sh
-   npx create-expo-app --example with-react-navigation
-   yarn create expo-app --example with-react-navigation
-   pnpm create expo-app --example with-react-navigation
-   bun create expo-app --example with-react-navigation
-   ```
-
-## Running the app
-
-- Install the dependencies:
-
-  ```sh
-  npx expo install
-  ```
-
-- Start the development server:
-
-  ```sh
-  npx expo start
-  ```
-
-- Build and run iOS and Android development builds:
-
-  ```sh
-  npm run ios
-  # or
-  npm run android
-  ```
-
-- In the terminal running the development server, press `i` to open the iOS simulator, `a` to open the Android device or emulator, or `w` to open the web browser.
-
-## Resources
-
-- [React Navigation documentation](https://reactnavigation.org/)
-- [Expo documentation](https://docs.expo.dev/)
+- [功能特性](#功能特性)
+- [技術架構](#技術架構)
+- [快速開始](#快速開始)
+- [專案結構](#專案結構)
+- [Redux 狀態管理](#redux-狀態管理)
+- [登入登出功能](#登入登出功能)
+- [使用 Expo Redux DevTools Plugin 除錯](#使用-expo-redux-devtools-plugin-除錯)
+  - [快速設定](#快速設定)
+  - [使用方式](#使用方式)
+  - [測試流程](#測試流程)
+- [開發指南](#開發指南)
 
 ---
 
-Demo assets are from [lucide.dev](https://lucide.dev/)
+## 功能特性
+
+### ✨ 核心功能
+
+- ✅ **React Navigation** - 使用 Native Stack 和 Bottom Tab 導航
+- ✅ **Redux Toolkit** - 現代化的 Redux 狀態管理
+- ✅ **Redux Saga** - 處理複雜的非同步流程
+- ✅ **TypeScript** - 完整的類型安全
+- ✅ **認證系統** - 登入/登出功能，條件式導航
+- ✅ **Redux DevTools** - 支援 React Native Debugger 除錯
+
+### 🎨 UI/UX 特性
+
+- 🌓 **主題支援** - 基於系統外觀的深色/淺色主題
+- 📱 **跨平台** - iOS、Android、Web 支援
+- 🔗 **深層連結** - 自動配置深層連結和 URL 處理
+- 🎯 **Edge-to-Edge** - Android 邊緣到邊緣配置
+
+---
+
+## 技術架構
+
+### 主要技術棧
+
+```
+React Native (0.81.5)
+├── Expo (~54.0.1)
+├── React (19.1.0)
+├── TypeScript (~5.9.2)
+└── Navigation
+    ├── @react-navigation/native (^7.1.8)
+    ├── @react-navigation/native-stack (^7.3.16)
+    └── @react-navigation/bottom-tabs (^7.4.0)
+
+Redux 生態系統
+├── @reduxjs/toolkit (^2.10.1)
+├── react-redux (^9.2.0)
+├── redux-saga (^1.4.2)
+└── redux-thunk (^3.1.0)
+```
+
+### 架構設計
+
+```
+src/
+├── navigation/
+│   ├── index.tsx               # 條件式導航（根據驗證狀態）
+│   ├── screens/                # 畫面組件
+│   │   ├── PublicScreen/       # 公開頁面
+│   │   ├── LoginScreen/        # 登入頁面
+│   │   ├── HomeScreen/         # 主頁（已驗證）
+│   │   └── ExploreScreen/      # 探索頁面（已驗證）
+│   └── store/                  # Redux Store
+│       ├── configureStore.ts   # Store 配置
+│       ├── hooks.ts            # Typed hooks
+│       ├── actions/            # Saga action creators
+│       ├── sagas/              # Redux Saga
+│       └── slices/             # Redux slices (reducers)
+├── components/                 # 共用組件
+├── constants/                  # 常數定義
+└── hooks/                      # 自訂 hooks
+```
+
+---
+
+## 快速開始
+
+### 前置需求
+
+- Node.js (建議 v18 或 v20)
+- Yarn 或 npm
+- Expo CLI
+- iOS Simulator (macOS) 或 Android Studio
+
+### 安裝
+
+```bash
+# 克隆專案
+cd /Users/tomaslin/Projects/passontw-app-services/cmd/token-app-service
+
+# 安裝依賴
+yarn install
+# 或
+npm install
+```
+
+### 運行專案
+
+```bash
+# 啟動開發伺服器
+  npx expo start
+
+# 或清除快取後啟動
+npx expo start -c
+
+# 在 iOS 模擬器中運行
+npx expo start --ios
+# 或按 'i'
+
+# 在 Android 模擬器中運行
+npx expo start --android
+# 或按 'a'
+
+# 在網頁瀏覽器中運行
+npx expo start --web
+# 或按 'w'
+```
+
+---
+
+## 專案結構
+
+### 導航結構
+
+```
+Navigation (條件式)
+├─ isAuthenticated = false
+│  └─ PublicStack
+│     ├─ PublicScreen        (公開頁面)
+│     └─ LoginScreen         (登入頁面)
+│
+└─ isAuthenticated = true
+   └─ RootStack
+      ├─ HomeTabs            (底部 Tab 導航)
+      │  ├─ HomeScreen       (主頁)
+      │  └─ ExploreScreen    (探索)
+      └─ NotFoundScreen      (404)
+```
+
+### Redux Store 結構
+
+```typescript
+RootState
+└─ auth
+   ├─ isAuthenticated: boolean    // 驗證狀態
+   ├─ user: User | null           // 使用者資料
+   ├─ loading: boolean            // 載入狀態
+   └─ error: string | null        // 錯誤訊息
+```
+
+---
+
+## Redux 狀態管理
+
+### Store 配置
+
+專案使用 Redux Toolkit 配置 Store，整合了：
+
+- **Redux Thunk** - 簡單的非同步邏輯
+- **Redux Saga** - 複雜的非同步流程控制
+- **Redux DevTools** - 開發環境下的除錯工具
+
+```typescript
+// src/navigation/store/configureStore.ts
+export const store = configureStore({
+  reducer: {
+    auth: authReducer,
+  },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      thunk: true,
+      serializableCheck: {...},
+    }).concat(sagaMiddleware),
+  devTools: __DEV__, // 啟用 Redux DevTools
+});
+```
+
+### Typed Hooks
+
+使用型別安全的 hooks：
+
+```typescript
+// 使用
+import { useAppDispatch, useAppSelector } from '@/navigation/store/hooks';
+
+function MyComponent() {
+  const dispatch = useAppDispatch();
+  const user = useAppSelector((state) => state.auth.user);
+  
+  // ...
+}
+```
+
+### Redux Saga
+
+處理非同步邏輯：
+
+```typescript
+// Saga Watcher
+function* watchAuthSagas() {
+  yield takeLatest(AUTH_SAGA_ACTIONS.LOGIN_REQUEST, loginSaga);
+  yield takeLatest(AUTH_SAGA_ACTIONS.LOGOUT_REQUEST, logoutSaga);
+}
+
+// Saga Worker
+function* loginSaga(action) {
+  try {
+    yield put(loginStart());
+    const user = yield call(loginApi, action.payload);
+    yield put(loginSuccess(user));
+  } catch (error) {
+    yield put(loginFailure(error.message));
+  }
+}
+```
+
+---
+
+## 登入登出功能
+
+### 測試帳號
+
+```
+使用者名稱: demo
+密碼: password
+```
+
+### 登入流程
+
+1. **PublicScreen** → 點擊「前往登入」
+2. **LoginScreen** → 輸入帳號密碼
+3. Dispatch `loginRequest` action
+4. Redux Saga 處理登入邏輯：
+   - dispatch `loginStart` (loading = true)
+   - 呼叫 API (模擬 1 秒延遲)
+   - dispatch `loginSuccess` (isAuthenticated = true)
+5. Navigation 偵測狀態變化
+6. 自動切換到 **RootStack** (HomeTabs)
+
+### 登出流程
+
+1. **HomeScreen** → 點擊「登出」按鈕
+2. Dispatch `logoutRequest` action
+3. Redux Saga 處理登出邏輯：
+   - 清除 localStorage token
+   - 延遲 300ms
+   - dispatch `logout` (isAuthenticated = false)
+4. Navigation 偵測狀態變化
+5. 自動切換回 **PublicStack**
+
+### Actions 流程圖
+
+```
+登入:
+auth/loginRequest (Saga Action)
+  └─ auth/loginStart
+  └─ [API Call]
+  └─ auth/loginSuccess
+
+登出:
+auth/logoutRequest (Saga Action)
+  └─ [清除 Token]
+  └─ auth/logout
+```
+
+---
+
+## 使用 Expo Redux DevTools Plugin 除錯
+
+### 為什麼使用 Expo Redux DevTools Plugin？
+
+根據 [Expo 官方文檔](https://docs.expo.dev/debugging/devtools-plugins/#redux)，Expo 提供了原生的 Redux DevTools Plugin，無需安裝額外的應用程式。
+
+#### 與 React Native Debugger 的比較
+
+| 特性 | Expo Redux DevTools | React Native Debugger |
+|------|---------------------|----------------------|
+| 安裝方式 | ✅ npm/yarn 套件 | ❌ 需下載獨立應用程式 |
+| 啟動方式 | ✅ 終端內建（`shift + m`） | ❌ 需另外啟動應用程式 |
+| Port 設定 | ✅ 自動配置 | ❌ 需手動設定 Port |
+| Expo 整合 | ✅ 原生支援 | ⚠️ 需額外配置 |
+| 開發體驗 | ✅ 無縫整合 | ⚠️ 需切換視窗 |
+
+**結論**：對於 Expo 專案，**Expo Redux DevTools Plugin 是更好的選擇**！
+
+---
+
+### 快速設定
+
+#### 📋 前置作業
+
+專案已配置好 Expo Redux DevTools Plugin，只需安裝依賴即可使用。
+
+#### 步驟 1: 安裝依賴
+
+```bash
+# 使用 yarn (推薦)
+yarn install
+
+# 或使用 npm
+npm install
+```
+
+這會安裝 `redux-devtools-expo-dev-plugin` 套件（已添加到 package.json）。
+
+#### 步驟 2: 配置檢查 ✅
+
+##### package.json
+
+已包含：
+```json
+{
+  "dependencies": {
+    "redux-devtools-expo-dev-plugin": "^0.3.0"
+  }
+}
+```
+
+##### configureStore.ts
+
+已正確配置：
+```typescript
+import devToolsEnhancer from 'redux-devtools-expo-dev-plugin';
+
+export const store = configureStore({
+  reducer: { auth: authReducer },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({...}).concat(sagaMiddleware),
+  devTools: false, // 禁用內建的 devTools
+  enhancers: (getDefaultEnhancers) => 
+    getDefaultEnhancers().concat(devToolsEnhancer()), // 使用 Expo DevTools
+});
+```
+
+參考：[Expo 官方文檔](https://docs.expo.dev/debugging/devtools-plugins/#redux)
+
+---
+
+### 使用方式
+
+#### 啟動專案
+
+```bash
+# 清除快取並啟動
+npx expo start -c
+
+# 在 iOS 模擬器中運行
+npx expo start --ios
+
+# 在 Android 模擬器中運行
+npx expo start --android
+```
+
+#### 開啟 Redux DevTools
+
+在終端按 `shift + m`，會顯示：
+
+```
+┌─────────────────────────────────────┐
+│  More tools                         │
+│  ─────────────────────────────      │
+│  › redux-devtools-expo-dev-plugin   │ ← 選這個！
+│    @dev-plugins/react-navigation    │
+└─────────────────────────────────────┘
+```
+
+選擇後，會在**瀏覽器**中自動開啟 Redux DevTools 介面！
+
+---
+
+### 測試流程
+
+#### 測試帳號
+
+```
+使用者名稱: demo
+密碼: password
+```
+
+#### 完整測試步驟
+
+1. **安裝並啟動**
+   ```bash
+   yarn install
+   npx expo start --ios
+   ```
+
+2. **開啟 DevTools**
+   - 在終端按 `shift + m`
+   - 選擇 `redux-devtools-expo-dev-plugin`
+
+3. **執行登入流程**
+   - PublicScreen → 點擊「前往登入」
+   - LoginScreen → 輸入 `demo` / `password`
+   - 點擊「登入」按鈕
+
+4. **觀察 Redux Actions**
+   在 Redux DevTools 中會看到：
+   ```
+   @@INIT
+   auth/loginRequest          ← Saga action
+   auth/loginStart            ← loading = true
+   ⏳ (1秒延遲 - 模擬 API)
+   auth/loginSuccess          ← isAuthenticated = true
+   ```
+
+5. **檢查 State 變化**
+   ```json
+   {
+     "auth": {
+       "isAuthenticated": true,    // ← 變化
+       "user": {                    // ← 新增
+         "id": "1",
+         "name": "Demo User"
+       },
+       "loading": false,
+       "error": null
+     }
+   }
+   ```
+
+6. **測試登出**
+   - HomeScreen → 點擊「登出」按鈕
+   - 觀察 State 恢復初始狀態
+
+---
+
+### 常見問題
+
+#### Q: 按 shift + m 沒看到 Redux DevTools？
+
+**A:** 
+1. 確認已執行 `yarn install`
+2. 重新啟動：`npx expo start -c`
+3. 確認終端沒有錯誤訊息
+
+#### Q: Redux DevTools 顯示空白？
+
+**A:**
+1. 確認 `devTools: false` 已設定（在 configureStore.ts）
+2. 確認 `devToolsEnhancer()` 已添加到 enhancers
+3. 重新啟動專案並清除快取
+
+#### Q: 生產環境會包含 DevTools 嗎？
+
+**A:** 不會！`devToolsEnhancer()` 只在開發環境運作，生產版本會自動移除。
+
+---
+
+### 快速開始
+
+#### 1. 安裝套件
+
+```bash
+# 使用 yarn
+yarn install
+
+# 或使用 npm
+npm install
+```
+
+#### 2. 配置已完成 ✅
+
+專案已經正確配置了 Expo Redux DevTools Plugin：
+
+```typescript
+// src/navigation/store/configureStore.ts
+import devToolsEnhancer from 'redux-devtools-expo-dev-plugin';
+
+export const store = configureStore({
+  reducer: { auth: authReducer },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({...}).concat(sagaMiddleware),
+  devTools: false, // 禁用內建的 devTools
+  enhancers: (getDefaultEnhancers) => 
+    getDefaultEnhancers().concat(devToolsEnhancer()), // 使用 Expo DevTools
+});
+```
+
+#### 3. 啟動專案
+
+```bash
+# 清除快取並啟動
+npx expo start -c
+
+# 在 iOS 模擬器中運行
+npx expo start --ios
+
+# 在 Android 模擬器中運行
+npx expo start --android
+```
+
+#### 4. 開啟 Redux DevTools
+
+在終端中按 `shift + m` 開啟 Dev Tools 選單，選擇：
+
+```
+┌─────────────────────────────────────┐
+│  More tools                         │
+│  ─────────────────────────────      │
+│  › redux-devtools-expo-dev-plugin   │ ← 選擇這個
+│    @dev-plugins/react-navigation    │
+│    @dev-plugins/react-query         │
+└─────────────────────────────────────┘
+```
+
+選擇後會自動在**瀏覽器**中開啟 Redux DevTools 介面！
+
+### 使用 Redux DevTools
+
+#### 查看 Redux State
+
+1. 在 Redux 面板中，點擊 **"State"** 標籤
+2. 查看完整的 State 樹：
+
+```json
+{
+  "auth": {
+    "isAuthenticated": false,
+    "user": null,
+    "loading": false,
+    "error": null
+  }
+}
+```
+
+#### 追蹤 Actions
+
+執行登入操作後，在 Actions 列表中會看到：
+
+```
+@@INIT
+auth/loginRequest          ← Saga action
+auth/loginStart            ← loading = true
+⏳ (1秒 API 延遲)
+auth/loginSuccess          ← isAuthenticated = true
+```
+
+#### 時間旅行除錯
+
+1. 點擊任一過去的 Action
+2. App 的 State 會立即回到那個時間點
+3. UI 也會相應更新
+
+這對於：
+- 🐛 追蹤 Bug 發生的時間點
+- 🔄 重現特定的狀態
+- 🧪 測試不同的狀態組合
+
+### 測試登入登出流程
+
+#### 完整測試場景
+
+```bash
+# 1. 啟動 React Native Debugger (Port: 19000)
+open -a "React Native Debugger"
+
+# 2. 啟動專案
+npx expo start -c
+npx expo start --ios
+
+# 3. 開啟 Debug 模式 (Cmd + D)
+
+# 4. 執行登入流程
+# - PublicScreen → 前往登入
+# - LoginScreen → 輸入 demo / password
+# - 觀察 Redux DevTools 中的 Actions
+
+# 5. 執行登出流程
+# - HomeScreen → 點擊登出
+# - 觀察 State 變化
+```
+
+#### 觀察 State 變化
+
+**初始狀態:**
+```json
+{ "auth": { "isAuthenticated": false, "user": null } }
+```
+
+**登入中:**
+```json
+{ "auth": { "isAuthenticated": false, "loading": true } }
+```
+
+**登入成功:**
+```json
+{
+  "auth": {
+    "isAuthenticated": true,
+    "user": { "id": "1", "name": "Demo User" },
+    "loading": false
+  }
+}
+```
+
+### 常見問題排除
+
+#### 問題 1: "Waiting for connection"
+
+**解決方法:**
+1. 確認 Port 設定為 19000
+2. 在 App 中開啟 Debug 模式
+3. 重新啟動 Expo: `npx expo start -c`
+
+#### 問題 2: Redux DevTools 空白
+
+**檢查項目:**
+1. 確認 `devTools: __DEV__` 已設定
+2. 確認 `<Provider store={store}>` 已包裹 App
+3. 重新啟動 React Native Debugger
+
+#### 問題 3: 看不到 Actions
+
+**解決方法:**
+在元件中添加日誌確認 dispatch：
+```typescript
+const handleLogin = () => {
+  console.log('Dispatching loginRequest');
+  dispatch(loginRequest({ username: 'demo', password: 'password' }));
+};
+```
+
+#### 問題 4: App 卡頓
+
+**原因:** Remote Debugging 會降低效能（正常現象）
+
+**解決方法:**
+- 僅在需要時開啟 Debug 模式
+- 除錯完畢後關閉 Remote Debugging
+
+### 進階功能
+
+#### 1. 手動 Dispatch Actions
+
+在 Redux DevTools 底部輸入：
+```javascript
+{
+  "type": "auth/loginRequest",
+  "payload": {
+    "username": "test",
+    "password": "test123"
+  }
+}
+```
+按 `Cmd + Enter` dispatch！
+
+#### 2. 查看 Network 請求
+
+1. 點擊：`Debugger` → `Enable Network Inspect`
+2. 切換到 `Network` 標籤
+3. 查看所有 HTTP 請求和回應
+
+#### 3. React DevTools
+
+在上半部分：
+- 查看元件樹
+- 檢查 props 和 state
+- 查看 hooks 值
+- 即時修改 props 測試
+
+#### 4. Console 除錯
+
+在 Console 標籤：
+- 查看所有 `console.log` 輸出
+- 執行 JavaScript 程式碼
+- 查看錯誤堆疊
+
+### 快捷鍵
+
+#### React Native Debugger
+
+| 快捷鍵 | 功能 |
+|--------|------|
+| `Cmd/Ctrl + T` | 更改 Port |
+| `Cmd/Ctrl + R` | 重新載入 App |
+| `Cmd/Ctrl + K` | 清除 Console |
+| `Cmd/Ctrl + [` | 上一個 Action |
+| `Cmd/Ctrl + ]` | 下一個 Action |
+
+#### 模擬器
+
+| 快捷鍵 | 功能 | 平台 |
+|--------|------|------|
+| `Cmd + D` | 開啟 Dev Menu | iOS |
+| `Cmd + M` | 開啟 Dev Menu | Android (macOS) |
+| `Ctrl + M` | 開啟 Dev Menu | Android (Windows) |
+| `Cmd + R` | 重新載入 | iOS |
+| `R + R` | 重新載入 | Android |
+
+---
+
+## 開發指南
+
+### 程式碼規範
+
+本專案遵循以下開發原則：
+
+#### Clean Code 核心理念
+
+1. **需求先行原則** - 確保開發有明確目標
+2. **單一職責原則** - 每個模組只負責一個功能
+3. **開放封閉原則** - 對擴展開放，對修改封閉
+4. **DRY 原則** - 避免重複程式碼
+5. **YAGNI 原則** - 不實作不需要的功能
+
+#### 架構設計
+
+- **分層架構** - 清晰的層次劃分
+- **模組化設計** - 高內聚、低耦合
+- **型別安全** - 完整的 TypeScript 支援
+
+### 新增功能
+
+#### 新增 Redux Slice
+
+```typescript
+// 1. 創建 slice
+// src/navigation/store/slices/newSlice.ts
+import { createSlice } from '@reduxjs/toolkit';
+
+const newSlice = createSlice({
+  name: 'newFeature',
+  initialState: {...},
+  reducers: {...},
+});
+
+export default newSlice.reducer;
+
+// 2. 添加到 store
+// src/navigation/store/configureStore.ts
+export const store = configureStore({
+  reducer: {
+    auth: authReducer,
+    newFeature: newFeatureReducer, // 新增
+  },
+  // ...
+});
+
+// 3. 更新類型
+export type RootState = ReturnType<typeof store.getState>;
+```
+
+#### 新增 Saga
+
+```typescript
+// 1. 創建 saga
+// src/navigation/store/sagas/newSaga.ts
+function* newSaga(action) {
+  try {
+    yield put(startAction());
+    const result = yield call(api, action.payload);
+    yield put(successAction(result));
+  } catch (error) {
+    yield put(failureAction(error));
+  }
+}
+
+export function* watchNewSaga() {
+  yield takeLatest('NEW_ACTION', newSaga);
+}
+
+// 2. 添加到 root saga
+// src/navigation/store/sagas/index.ts
+export default function* rootSaga() {
+  yield all([
+    fork(watchAuthSagas),
+    fork(watchNewSaga), // 新增
+  ]);
+}
+```
+
+#### 新增畫面
+
+```typescript
+// 1. 創建畫面組件
+// src/navigation/screens/NewScreen/index.tsx
+export default function NewScreen() {
+  return <View>...</View>;
+}
+
+// 2. 添加到導航
+// src/navigation/index.tsx
+const RootStack = createNativeStackNavigator({
+  screens: {
+    HomeTabs: {...},
+    NewScreen: { // 新增
+      screen: NewScreen,
+      options: { title: 'New' },
+    },
+  },
+});
+```
+
+### 測試
+
+```bash
+# 運行 linter
+npx eslint src/
+
+# 清除快取
+npx expo start -c
+
+# 重置專案
+npm run reset-project
+```
+
+### 部署
+
+```bash
+# 建立 iOS 版本
+eas build --platform ios
+
+# 建立 Android 版本
+eas build --platform android
+
+# 建立兩個平台
+eas build --platform all
+```
+
+---
+
+## 資源連結
+
+### 官方文檔
+
+- [React Navigation](https://reactnavigation.org/)
+- [Expo](https://docs.expo.dev/)
+- [Redux Toolkit](https://redux-toolkit.js.org/)
+- [Redux Saga](https://redux-saga.js.org/)
+- [React Native Debugger](https://github.com/jhen0409/react-native-debugger)
+
+### 相關工具
+
+- [React Native](https://reactnative.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Redux DevTools](https://github.com/reduxjs/redux-devtools)
+
+---
+
+## 授權
+
+本專案使用的 Demo 資源來自 [lucide.dev](https://lucide.dev/)
+
+---
+
+## 總結
+
+### ✅ 專案特色
+
+1. **現代化技術棧** - Expo + React Navigation + Redux Toolkit + Redux Saga
+2. **完整的認證系統** - 登入/登出功能，條件式導航
+3. **優秀的開發體驗** - Redux DevTools 支援，時間旅行除錯
+4. **型別安全** - 完整的 TypeScript 支援
+5. **Clean Code** - 遵循最佳實踐和開發原則
+
+### 🚀 立即開始
+
+```bash
+# 安裝依賴
+yarn install
+
+# 啟動專案
+npx expo start
+
+# 開始除錯
+# 1. 安裝 React Native Debugger
+# 2. 設定 Port: 19000
+# 3. 開啟 Debug 模式 (Cmd + D)
+# 4. 開始開發！
+```
+
+### 📞 需要幫助？
+
+- 查看上方的[常見問題排除](#常見問題排除)
+- 參考[開發指南](#開發指南)
+- 閱讀[官方文檔](#資源連結)
+
+Happy Coding! 🎉
