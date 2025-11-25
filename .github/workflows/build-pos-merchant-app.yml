@@ -78,7 +78,7 @@ jobs:
 
   # Windows 編譯
   build-windows:
-    runs-on: windows-latest
+    runs-on: mac-mini-build
     
     steps:
       - name: 📥 Checkout code
@@ -87,7 +87,7 @@ jobs:
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'yarn'
           cache-dependency-path: cmd/pos-merchant-app/yarn.lock
 
@@ -121,7 +121,7 @@ jobs:
 
   # Linux 編譯
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: mac-mini-build
     
     steps:
       - name: 📥 Checkout code
@@ -130,7 +130,7 @@ jobs:
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'yarn'
           cache-dependency-path: cmd/pos-merchant-app/yarn.lock
 
@@ -173,7 +173,7 @@ jobs:
   # 創建 Release（僅在打 tag 時執行）
   release:
     needs: [build-macos, build-windows, build-linux]
-    runs-on: ubuntu-latest
+    runs-on: mac-mini-build
     if: startsWith(github.ref, 'refs/tags/v')
     
     permissions:
