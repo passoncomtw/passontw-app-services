@@ -26,4 +26,12 @@ export default defineConfig({
         : {},
     }),
   ],
+  build: {
+    // 優化 Rollup 配置以避免 "too many open files" 錯誤
+    rollupOptions: {
+      maxParallelFileOps: 20, // 限制並行文件操作數量
+    },
+    // 增加 chunk 大小限制
+    chunkSizeWarningLimit: 1000,
+  },
 })

@@ -25,6 +25,15 @@ jobs:
           cache: 'yarn'
           cache-dependency-path: cmd/pos-merchant-app/yarn.lock
 
+      - name: 🔧 Increase file descriptor limit
+        run: |
+          echo "Current limits:"
+          ulimit -n
+          echo "Increasing file descriptor limit..."
+          ulimit -n 10240
+          echo "New limit:"
+          ulimit -n
+
       - name: 🏗️ Build macOS app
         working-directory: cmd/pos-merchant-app
         run: yarn install && yarn build:fast --mac
