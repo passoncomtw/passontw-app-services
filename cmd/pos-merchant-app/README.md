@@ -172,15 +172,19 @@ yarn build:win:arm64          # Windows ARM64
 #### macOS
 
 ```bash
-yarn build:mac                # macOS 所有版本（推薦）
-yarn build:mac:universal      # Intel + Apple Silicon
-yarn build:mac:intel          # Intel Mac
-yarn build:mac:arm            # Apple Silicon
+yarn build:mac                # macOS 所有版本（推薦：分別編譯 x64 和 arm64）
+yarn build:mac:intel          # Intel Mac（x64）
+yarn build:mac:arm            # Apple Silicon（arm64）
+yarn build:mac:universal      # Universal Binary（可能遇到編譯錯誤，見 BUILD_NOTES.md）
 ```
 
 **輸出檔案**：
-- `PassonTW Merchant-0.0.0-universal.dmg` - DMG 映像檔
-- `PassonTW Merchant-0.0.0-universal-mac.zip` - ZIP 壓縮檔
+- `PassonTW Merchant-0.0.0-x64.dmg` - Intel Mac DMG
+- `PassonTW Merchant-0.0.0-x64-mac.zip` - Intel Mac ZIP
+- `PassonTW Merchant-0.0.0-arm64.dmg` - Apple Silicon DMG
+- `PassonTW Merchant-0.0.0-arm64-mac.zip` - Apple Silicon ZIP
+
+> ⚠️ **注意**: 當前配置會分別編譯 x64 和 arm64 版本，而不是 Universal Binary。詳見 [BUILD_NOTES.md](./BUILD_NOTES.md)
 
 #### Linux
 
@@ -210,8 +214,10 @@ dist/
 │   ├── PassonTW Merchant-Setup-0.0.0-ia32.exe    (32-bit)
 │   └── PassonTW Merchant-0.0.0-x64.exe           (Portable)
 ├── macOS
-│   ├── PassonTW Merchant-0.0.0-universal.dmg     (DMG)
-│   └── PassonTW Merchant-0.0.0-universal-mac.zip (ZIP)
+│   ├── PassonTW Merchant-0.0.0-x64.dmg           (Intel Mac DMG)
+│   ├── PassonTW Merchant-0.0.0-x64-mac.zip       (Intel Mac ZIP)
+│   ├── PassonTW Merchant-0.0.0-arm64.dmg         (Apple Silicon DMG)
+│   └── PassonTW Merchant-0.0.0-arm64-mac.zip     (Apple Silicon ZIP)
 └── Linux
     ├── PassonTW Merchant-0.0.0-x64.AppImage      (AppImage)
     ├── PassonTW Merchant-0.0.0-amd64.deb         (Debian)
@@ -224,7 +230,7 @@ dist/
 
 ```bash
 yarn build:win:x64            # Windows 64-bit
-yarn build:mac:universal      # macOS Universal
+yarn build:mac                # macOS（x64 + arm64）
 yarn build:linux:x64          # Linux 64-bit
 ```
 
@@ -246,11 +252,14 @@ yarn build:all                # 所有平台所有版本
 | **Windows** | ia32 | NSIS 安裝程式 | `yarn build:win:ia32` |
 | **Windows** | arm64 | NSIS 安裝程式 | `yarn build:win:arm64` |
 | **Windows** | x64 | Portable 版 | `yarn build:win` |
-| **macOS** | Universal | DMG + ZIP | `yarn build:mac:universal` |
+| **macOS** | x64 + arm64 | DMG + ZIP（分開） | `yarn build:mac` ✅ |
 | **macOS** | x64 | DMG + ZIP | `yarn build:mac:intel` |
 | **macOS** | arm64 | DMG + ZIP | `yarn build:mac:arm` |
+| **macOS** | Universal | DMG（單一檔案）| `yarn build:mac:universal` ⚠️ |
 | **Linux** | x64 | AppImage + DEB + RPM | `yarn build:linux:x64` |
 | **Linux** | arm64 | AppImage + DEB + RPM | `yarn build:linux:arm64` |
+
+> ⚠️ **macOS Universal Binary**: 可能會遇到編譯錯誤。建議使用 `yarn build:mac`（分別編譯 x64 和 arm64）。
 
 ### 🌍 跨平台編譯限制
 

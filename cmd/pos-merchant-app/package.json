@@ -1,11 +1,13 @@
 {
   "name": "merchant-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
+    "build:fast": "vite build && electron-builder",
+    "build:dev": "vite build && electron-builder --mac --arm64",
     "build:win": "tsc && vite build && electron-builder --win",
     "build:mac": "tsc && vite build && electron-builder --mac",
     "build:linux": "tsc && vite build && electron-builder --linux",
@@ -57,7 +59,7 @@
   "author": "Your Name <your.email@example.com>",
   "build": {
     "appId": "com.passontw.merchantapp",
-    "productName": "PassonTW Merchant",
+    "productName": "PassonTw-POS-Merchant",
     "copyright": "Copyright © 2025 PassonTW",
     "directories": {
       "buildResources": "build",
@@ -66,7 +68,12 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
-      "package.json"
+      "package.json",
+      "!**/*.map",
+      "!**/LICENSE*"
+    ],
+    "asarUnpack": [
+      "**/*.node"
     ],
     "win": {
       "target": [
@@ -79,7 +86,6 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "build/icon.ico",
       "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
     },
     "nsis": {
@@ -95,14 +101,13 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["universal"]
+          "arch": ["x64", "arm64"]
         },
         {
           "target": "zip",
-          "arch": ["universal"]
+          "arch": ["x64", "arm64"]
         }
       ],
-      "icon": "build/icon.icns",
       "category": "public.app-category.business",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
@@ -111,7 +116,6 @@
     },
     "dmg": {
       "title": "${productName} ${version}",
-      "icon": "build/icon.icns",
       "contents": [
         {
           "x": 130,
@@ -144,7 +148,6 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "build/icons",
       "category": "Office",
       "synopsis": "PassonTW 商家管理系統",
       "description": "現代化的商家管理桌面應用程式",
