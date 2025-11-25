@@ -25,6 +25,24 @@ jobs:
           cache: 'yarn'
           cache-dependency-path: cmd/pos-merchant-app/yarn.lock
 
+      - name: 💾 Cache Electron
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: ${{ runner.os }}-electron-${{ hashFiles('cmd/pos-merchant-app/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-electron-
+
+      - name: 💾 Cache Vite
+        uses: actions/cache@v4
+        with:
+          path: cmd/pos-merchant-app/node_modules/.vite
+          key: ${{ runner.os }}-vite-${{ hashFiles('cmd/pos-merchant-app/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-vite-
+
       - name: 🔧 Increase file descriptor limit
         run: |
           echo "Current limits:"
@@ -91,6 +109,24 @@ jobs:
           cache: 'yarn'
           cache-dependency-path: cmd/pos-merchant-app/yarn.lock
 
+      - name: 💾 Cache Electron
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: ${{ runner.os }}-electron-${{ hashFiles('cmd/pos-merchant-app/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-electron-
+
+      - name: 💾 Cache Vite
+        uses: actions/cache@v4
+        with:
+          path: cmd/pos-merchant-app/node_modules/.vite
+          key: ${{ runner.os }}-vite-${{ hashFiles('cmd/pos-merchant-app/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-vite-
+
       - name: 🏗️ Build Windows app
         working-directory: cmd/pos-merchant-app
         run: yarn install && yarn build:fast --win
@@ -133,6 +169,24 @@ jobs:
           node-version: '22'
           cache: 'yarn'
           cache-dependency-path: cmd/pos-merchant-app/yarn.lock
+
+      - name: 💾 Cache Electron
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: ${{ runner.os }}-electron-${{ hashFiles('cmd/pos-merchant-app/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-electron-
+
+      - name: 💾 Cache Vite
+        uses: actions/cache@v4
+        with:
+          path: cmd/pos-merchant-app/node_modules/.vite
+          key: ${{ runner.os }}-vite-${{ hashFiles('cmd/pos-merchant-app/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-vite-
 
       - name: 🏗️ Build Linux app
         working-directory: cmd/pos-merchant-app
