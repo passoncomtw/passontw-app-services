@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - develop
-    tags:
-      - 'v*'
   pull_request:
     branches:
       - develop
@@ -27,15 +25,11 @@ jobs:
           cache: 'yarn'
           cache-dependency-path: cmd/pos-merchant-app/yarn.lock
 
-      - name: 📦 Install dependencies
-        working-directory: cmd/pos-merchant-app
-        run: yarn install --frozen-lockfile
-
       - name: 🏗️ Build macOS app
         working-directory: cmd/pos-merchant-app
-        run: yarn build:mac
+        run: yarn install && yarn build:fast --mac
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GHCR_TOKEN }}
 
       - name: 📊 List build outputs
         working-directory: cmd/pos-merchant-app
@@ -88,15 +82,11 @@ jobs:
           cache: 'yarn'
           cache-dependency-path: cmd/pos-merchant-app/yarn.lock
 
-      - name: 📦 Install dependencies
-        working-directory: cmd/pos-merchant-app
-        run: yarn install --frozen-lockfile
-
       - name: 🏗️ Build Windows app
         working-directory: cmd/pos-merchant-app
-        run: yarn build:win
+        run: yarn install && yarn build:fast --win
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GHCR_TOKEN }}
 
       - name: 📊 List build outputs
         working-directory: cmd/pos-merchant-app
@@ -135,15 +125,11 @@ jobs:
           cache: 'yarn'
           cache-dependency-path: cmd/pos-merchant-app/yarn.lock
 
-      - name: 📦 Install dependencies
-        working-directory: cmd/pos-merchant-app
-        run: yarn install --frozen-lockfile
-
       - name: 🏗️ Build Linux app
         working-directory: cmd/pos-merchant-app
-        run: yarn build:linux
+        run: yarn install && yarn build:fast --linux
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GHCR_TOKEN }}
 
       - name: 📊 List build outputs
         working-directory: cmd/pos-merchant-app
@@ -250,7 +236,7 @@ jobs:
             
             查看下方的自動生成的更新日誌。
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GHCR_TOKEN }}
 
   # 歸檔構建結果（非 Release 時）
   archive:
