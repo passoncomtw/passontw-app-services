@@ -3,6 +3,11 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/passontw/passontw-app-services.git",
+    "directory": "cmd/pos-merchant-app"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
@@ -61,6 +66,7 @@
     "appId": "com.passontw.merchantapp",
     "productName": "PassonTw-POS-Merchant",
     "copyright": "Copyright © 2025 PassonTW",
+    "publish": null,
     "directories": {
       "buildResources": "build",
       "output": "dist"
