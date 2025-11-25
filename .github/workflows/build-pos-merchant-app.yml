@@ -1,0 +1,284 @@
+name: Build POS Merchant App
+
+on:
+  push:
+    branches:
+      - develop
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - develop
+  workflow_dispatch:  # 允許手動觸發
+
+jobs:
+  # macOS 編譯
+  build-macos:
+    runs-on: mac-mini-build
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'yarn'
+          cache-dependency-path: cmd/pos-merchant-app/yarn.lock
+
+      - name: 📦 Install dependencies
+        working-directory: cmd/pos-merchant-app
+        run: yarn install --frozen-lockfile
+
+      - name: 🏗️ Build macOS app
+        working-directory: cmd/pos-merchant-app
+        run: yarn build:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📊 List build outputs
+        working-directory: cmd/pos-merchant-app
+        run: |
+          echo "=== Build outputs ==="
+          ls -lh dist/*.dmg || true
+          ls -lh dist/*.zip || true
+          du -sh dist
+
+      - name: 📤 Upload macOS x64 DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-x64-dmg
+          path: cmd/pos-merchant-app/dist/*-x64.dmg
+          if-no-files-found: error
+
+      - name: 📤 Upload macOS arm64 DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64-dmg
+          path: cmd/pos-merchant-app/dist/*-arm64.dmg
+          if-no-files-found: error
+
+      - name: 📤 Upload macOS x64 ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-x64-zip
+          path: cmd/pos-merchant-app/dist/*-x64.zip
+          if-no-files-found: error
+
+      - name: 📤 Upload macOS arm64 ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64-zip
+          path: cmd/pos-merchant-app/dist/*-arm64.zip
+          if-no-files-found: error
+
+  # Windows 編譯
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'yarn'
+          cache-dependency-path: cmd/pos-merchant-app/yarn.lock
+
+      - name: 📦 Install dependencies
+        working-directory: cmd/pos-merchant-app
+        run: yarn install --frozen-lockfile
+
+      - name: 🏗️ Build Windows app
+        working-directory: cmd/pos-merchant-app
+        run: yarn build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📊 List build outputs
+        working-directory: cmd/pos-merchant-app
+        run: |
+          echo "=== Build outputs ==="
+          dir dist\*.exe
+          echo "=== Disk usage ==="
+          dir dist
+
+      - name: 📤 Upload Windows x64 installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-installer
+          path: cmd/pos-merchant-app/dist/*-x64.exe
+          if-no-files-found: error
+
+      - name: 📤 Upload Windows ia32 installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-ia32-installer
+          path: cmd/pos-merchant-app/dist/*-ia32.exe
+          if-no-files-found: error
+
+  # Linux 編譯
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'yarn'
+          cache-dependency-path: cmd/pos-merchant-app/yarn.lock
+
+      - name: 📦 Install dependencies
+        working-directory: cmd/pos-merchant-app
+        run: yarn install --frozen-lockfile
+
+      - name: 🏗️ Build Linux app
+        working-directory: cmd/pos-merchant-app
+        run: yarn build:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📊 List build outputs
+        working-directory: cmd/pos-merchant-app
+        run: |
+          echo "=== Build outputs ==="
+          ls -lh dist/*.AppImage || true
+          ls -lh dist/*.deb || true
+          ls -lh dist/*.rpm || true
+          du -sh dist
+
+      - name: 📤 Upload Linux AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: cmd/pos-merchant-app/dist/*.AppImage
+          if-no-files-found: error
+
+      - name: 📤 Upload Linux DEB
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: cmd/pos-merchant-app/dist/*.deb
+          if-no-files-found: error
+
+      - name: 📤 Upload Linux RPM
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-rpm
+          path: cmd/pos-merchant-app/dist/*.rpm
+          if-no-files-found: error
+
+  # 創建 Release（僅在打 tag 時執行）
+  release:
+    needs: [build-macos, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📥 Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 📊 List downloaded artifacts
+        run: |
+          echo "=== Downloaded artifacts ==="
+          ls -R artifacts/
+          echo "=== File sizes ==="
+          du -sh artifacts/*
+
+      - name: 📦 Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/macos-x64-dmg/*.dmg
+            artifacts/macos-arm64-dmg/*.dmg
+            artifacts/macos-x64-zip/*.zip
+            artifacts/macos-arm64-zip/*.zip
+            artifacts/windows-x64-installer/*.exe
+            artifacts/windows-ia32-installer/*.exe
+            artifacts/linux-appimage/*.AppImage
+            artifacts/linux-deb/*.deb
+            artifacts/linux-rpm/*.rpm
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## 🎉 PassonTW POS Merchant App Release
+            
+            ### 📦 下載選項
+            
+            #### macOS
+            - **Apple Silicon (M1/M2/M3)**: 下載 `*-arm64.dmg`
+            - **Intel Mac**: 下載 `*-x64.dmg`
+            
+            #### Windows
+            - **64-bit**: 下載 `*-x64.exe`
+            - **32-bit**: 下載 `*-ia32.exe`
+            
+            #### Linux
+            - **通用**: 下載 `*.AppImage`
+            - **Debian/Ubuntu**: 下載 `*.deb`
+            - **Fedora/RedHat**: 下載 `*.rpm`
+            
+            ### 🔍 如何確認您的系統架構
+            
+            **macOS**:
+            ```bash
+            uname -m
+            # 輸出 arm64 → 下載 arm64 版本
+            # 輸出 x86_64 → 下載 x64 版本
+            ```
+            
+            **Windows**:
+            - 系統設定 → 系統 → 關於 → 系統類型
+            
+            ### ✨ 新功能與改進
+            
+            查看下方的自動生成的更新日誌。
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 歸檔構建結果（非 Release 時）
+  archive:
+    needs: [build-macos, build-windows, build-linux]
+    runs-on: mac-mini-build
+    
+    steps:
+      - name: 📥 Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 📊 List artifacts
+        run: |
+          echo "=== Build artifacts ==="
+          ls -R artifacts/
+          echo "=== Summary ==="
+          echo "macOS builds:"
+          ls artifacts/macos-*/
+          echo "Windows builds:"
+          ls artifacts/windows-*/
+          echo "Linux builds:"
+          ls artifacts/linux-*/
+
+      - name: 💾 Archive all builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-builds-${{ github.sha }}
+          path: artifacts/
+          retention-days: 30
+
