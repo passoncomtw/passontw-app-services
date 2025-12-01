@@ -1,6 +1,30 @@
+/**
+ * LoginScreen - E幣錢包登入頁面
+ * 
+ * 設計特點：
+ * - 簡潔的白色背景
+ * - 圓形 Logo (E幣)
+ * - 兩個輸入框：帳號、密碼
+ * - 輔助連結：忘記密碼、24h客服
+ * - 主要按鈕：登入（藍色）
+ * - 次要按鈕：免費註冊（白色邊框）
+ * - 底部版本號
+ */
+
 import React, { useState } from 'react';
-import { View, TextInput, StyleSheet, Pressable, ActivityIndicator, Alert } from 'react-native';
-import { Text } from '@react-navigation/elements';
+import { 
+  View, 
+  TextInput, 
+  StyleSheet, 
+  Pressable, 
+  ActivityIndicator, 
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text as RNText,
+  StatusBar
+} from 'react-native';
 import { useAppDispatch, useAppSelector } from '@/navigation/store/hooks';
 import { loginRequest } from '@/navigation/store/actions/authActions';
 
@@ -8,75 +32,141 @@ export default function LoginScreen() {
   const dispatch = useAppDispatch();
   const { loading, error } = useAppSelector((state) => state.auth);
   
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  // 預填測試帳號
+  const [account, setAccount] = useState('tomasdemo001');
+  const [password, setPassword] = useState('password');
 
   const handleLogin = () => {
     // 驗證輸入
-    if (!username.trim() || !password.trim()) {
-      Alert.alert('錯誤', '請輸入使用者名稱和密碼');
+    if (!account.trim() || !password.trim()) {
+      Alert.alert('錯誤', '請輸入帳號和密碼');
       return;
     }
 
     // 使用 Saga 處理登入
-    dispatch(loginRequest({ username: username.trim(), password }));
+    dispatch(loginRequest({ username: account.trim(), password }));
+  };
+
+  const handleForgotPassword = () => {
+    Alert.alert('忘記登入密碼', '此功能開發中...');
+  };
+
+  const handleCustomerService = () => {
+    Alert.alert('24h 客服', '此功能開發中...');
+  };
+
+  const handleRegister = () => {
+    Alert.alert('免費註冊', '此功能開發中...');
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.formContainer}>
-        <Text style={styles.title}>歡迎登入</Text>
-        <Text style={styles.subtitle}>請輸入您的帳號密碼</Text>
-        
-        {/* 提示訊息 */}
-        <View style={styles.hintContainer}>
-          <Text style={styles.hint}>💡 測試帳號</Text>
-          <Text style={styles.hintText}>使用者名稱: demo</Text>
-          <Text style={styles.hintText}>密碼: password</Text>
-        </View>
-
-        <TextInput
-          style={styles.input}
-          placeholder="使用者名稱"
-          value={username}
-          onChangeText={setUsername}
-          autoCapitalize="none"
-          autoCorrect={false}
-          editable={!loading}
-        />
-        
-        <TextInput
-          style={styles.input}
-          placeholder="密碼"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          editable={!loading}
-          onSubmitEditing={handleLogin}
-        />
-
-        {error && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>❌ {error}</Text>
-          </View>
-        )}
-
-        <Pressable 
-          style={({ pressed }) => [
-            styles.button,
-            loading && styles.buttonDisabled,
-            pressed && !loading && styles.buttonPressed
-          ]}
-          onPress={handleLogin}
-          disabled={loading}
+      <StatusBar barStyle="dark-content" />
+      
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>登入</Text>
-          )}
-        </Pressable>
-      </View>
+          <View style={styles.loginContainer}>
+            <View style={styles.inputGroup}>
+              {/* Logo */}
+              <View style={styles.logoContainer}>
+                <View style={styles.logo}>
+                  <RNText style={styles.logoText}>E幣</RNText>
+                </View>
+              </View>
+
+              {/* 錯誤訊息 */}
+              {error && (
+                <View style={styles.errorContainer}>
+                  <RNText style={styles.errorText}>❌ {error}</RNText>
+                </View>
+              )}
+
+              {/* 帳號輸入框 */}
+              <View style={styles.inputField}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="請輸入帳號"
+                  placeholderTextColor="#999"
+                  value={account}
+                  onChangeText={setAccount}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!loading}
+                />
+              </View>
+
+              {/* 密碼輸入框 */}
+              <View style={styles.inputField}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="請輸入登入密碼"
+                  placeholderTextColor="#999"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  editable={!loading}
+                  onSubmitEditing={handleLogin}
+                  returnKeyType="go"
+                />
+              </View>
+
+              {/* 輔助連結 */}
+              <View style={styles.helperLinks}>
+                <Pressable onPress={handleForgotPassword}>
+                  <RNText style={styles.linkText}>忘記登入密碼？</RNText>
+                </Pressable>
+                <Pressable onPress={handleCustomerService}>
+                  <RNText style={styles.linkText}>24h 客服</RNText>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* 按鈕區域 */}
+            <View style={styles.buttonContainer}>
+              {/* 登入按鈕 */}
+              <Pressable 
+                style={({ pressed }) => [
+                  styles.btnPrimary,
+                  loading && styles.btnDisabled,
+                  pressed && !loading && styles.btnPressed
+                ]}
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <RNText style={styles.btnPrimaryText}>登入</RNText>
+                )}
+              </Pressable>
+
+              {/* 免費註冊按鈕 */}
+              <Pressable 
+                style={({ pressed }) => [
+                  styles.btnSecondary,
+                  pressed && styles.btnPressed
+                ]}
+                onPress={handleRegister}
+                disabled={loading}
+              >
+                <RNText style={styles.btnSecondaryText}>免費註冊</RNText>
+              </Pressable>
+            </View>
+
+            {/* 版本號 */}
+            <View style={styles.versionContainer}>
+              <RNText style={styles.versionText}>version 1.0.0</RNText>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -84,78 +174,53 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#fff',
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
-    padding: 20,
-    backgroundColor: '#f5f5f5',
   },
-  formContainer: {
-    backgroundColor: '#fff',
-    padding: 24,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+  loginContainer: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingVertical: 40,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    textAlign: 'center',
+  
+  // 輸入區域
+  inputGroup: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  hintContainer: {
-    backgroundColor: '#E3F2FD',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  hint: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  hintText: {
-    fontSize: 13,
-    color: '#666',
-  },
-  input: {
-    height: 50,
-    borderColor: '#ddd',
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 16,
-    fontSize: 16,
-    backgroundColor: '#fff',
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 14,
-    borderRadius: 8,
+  
+  // Logo
+  logoContainer: {
     alignItems: 'center',
-    marginTop: 8,
-    minHeight: 50,
+    marginBottom: 60,
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#007AFF',
     justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
-  },
-  buttonText: {
+  logoText: {
+    fontSize: 32,
+    fontWeight: 'bold',
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
   },
+  
+  // 錯誤訊息
   errorContainer: {
     backgroundColor: '#FFEBEE',
     padding: 12,
@@ -166,5 +231,93 @@ const styles = StyleSheet.create({
     color: '#C62828',
     fontSize: 14,
     textAlign: 'center',
+  },
+  
+  // 輸入框
+  inputField: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    marginBottom: 16,
+    height: 50,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  input: {
+    fontSize: 16,
+    color: '#333',
+    height: '100%',
+  },
+  
+  // 輔助連結
+  helperLinks: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  linkText: {
+    fontSize: 14,
+    color: '#007AFF',
+  },
+  
+  // 按鈕區域
+  buttonContainer: {
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+  },
+  
+  // 主要按鈕 (登入)
+  btnPrimary: {
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  btnPrimaryText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  
+  // 次要按鈕 (免費註冊)
+  btnSecondary: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  btnSecondaryText: {
+    color: '#007AFF',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  
+  // 按鈕狀態
+  btnDisabled: {
+    opacity: 0.5,
+  },
+  btnPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.98 }],
+  },
+  
+  // 版本號
+  versionContainer: {
+    alignItems: 'center',
+    paddingBottom: 20,
+  },
+  versionText: {
+    fontSize: 12,
+    color: '#999',
   },
 });

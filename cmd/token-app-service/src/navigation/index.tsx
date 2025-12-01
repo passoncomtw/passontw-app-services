@@ -7,7 +7,6 @@ import { useAppSelector } from './store/hooks';
 import Explore from './screens/ExploreScreen';
 import Home from './screens/HomeScreen';
 import NotFound from './screens/NotFoundScreen';
-import PublicScreen from './screens/PublicScreen';
 import LoginScreen from './screens/LoginScreen';
 
 import { HapticTab } from '@/components/HapticTab';
@@ -91,16 +90,11 @@ function AuthenticatedStack() {
  */
 function PublicStack() {
   return (
-    <Stack.Navigator>
-      <Stack.Screen 
-        name="Public" 
-        component={PublicScreen}
-        options={{ headerShown: true, title: 'Public' }}
-      />
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen 
         name="Login" 
         component={LoginScreen}
-        options={{ headerShown: true, title: 'Login' }}
+        options={{ title: '登入' }}
       />
     </Stack.Navigator>
   );
@@ -155,7 +149,6 @@ type RootStackParamList = {
 };
 
 type PublicStackParamList = {
-  Public: undefined;
   Login: undefined;
 };
 
