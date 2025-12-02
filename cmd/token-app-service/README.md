@@ -627,7 +627,7 @@ npx expo start --ios
 ```typescript
 const handleLogin = () => {
   console.log('Dispatching loginRequest');
-  dispatch(loginRequest({ username: 'demo', password: 'password' }));
+  dispatch(loginRequest({ account: 'demo', password: 'password' }));
 };
 ```
 
@@ -648,7 +648,7 @@ const handleLogin = () => {
 {
   "type": "auth/loginRequest",
   "payload": {
-    "username": "test",
+    "account": "test",
     "password": "test123"
   }
 }

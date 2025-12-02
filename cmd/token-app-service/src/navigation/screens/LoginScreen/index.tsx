@@ -33,8 +33,8 @@ export default function LoginScreen() {
   const { loading, error } = useAppSelector((state) => state.auth);
   
   // 預填測試帳號
-  const [account, setAccount] = useState('tomasdemo001');
-  const [password, setPassword] = useState('password');
+  const [account, setAccount] = useState('');
+  const [password, setPassword] = useState('');
 
   const handleLogin = () => {
     // 驗證輸入
@@ -44,7 +44,7 @@ export default function LoginScreen() {
     }
 
     // 使用 Saga 處理登入
-    dispatch(loginRequest({ username: account.trim(), password }));
+    dispatch(loginRequest({ account: account.trim(), password }));
   };
 
   const handleForgotPassword = () => {

@@ -1,6 +1,9 @@
 import { call, put, takeLatest, delay } from 'redux-saga/effects';
 import { PayloadAction } from '@reduxjs/toolkit';
-import { loginStart, loginSuccess, loginFailure } from '../slices/authSlices';
+import Constants from 'expo-constants';
+import { loginStart, loginSuccess, loginFailure, logout } from '../slices/authSlices';
+import fetchAPIResult, { apiRequest, type ApiResponse } from '@pkg/utils/sagaHelpers';
+import type { RootState } from '../configureStore';
 
 /**
  * Action Types for Saga
@@ -12,105 +15,213 @@ export const AUTH_SAGA_ACTIONS = {
 } as const;
 
 /**
- * API 呼叫函數
- * 處理實際的 HTTP 請求
+ * 登入憑證
  */
 interface LoginCredentials {
-  username: string;
+  account: string;
   password: string;
-}
-
-interface LoginResponse {
-  id: string;
-  name: string;
-  token: string;
-}
-
-async function loginApi(credentials: LoginCredentials): Promise<LoginResponse> {
-  // 模擬 API 延遲
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // 模擬登入驗證
-  if (credentials.username === 'demo' && credentials.password === 'password') {
-    return {
-      id: '1',
-      name: 'Demo User',
-      token: 'mock-jwt-token-' + Date.now(),
-    };
-  }
-  
-  throw new Error('使用者名稱或密碼錯誤');
-  
-  /* 實際的 API 呼叫範例：
-  const response = await fetch('https://api.example.com/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(credentials),
-  });
-
-  if (!response.ok) {
-    throw new Error('登入失敗');
-  }
-
-  return response.json();
-  */
+  notificationToken?: string;
 }
 
 /**
+ * 用戶錢包資訊
+ */
+interface UserWallet {
+  status: number;
+  usefulBalance: number;
+  guaranteedBalance: number;
+  freezeBalance: number;
+}
+
+/**
+ * 用戶資訊
+ */
+interface User {
+  id: number;
+  type: number;
+  account: string;
+  name: string;
+  email: string;
+  createAt: string;
+  referralCode: string;
+  wallet: UserWallet;
+}
+
+/**
+ * 登入響應數據
+ */
+interface LoginData {
+  access_token: string;
+  expireIn: number;
+  user: User;
+}
+
+/**
+ * API 基礎 URL
+ */
+const API_BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl || 
+                     process.env.EXPO_PUBLIC_API_BASE_URL || 
+                     'https://token-app-api.passon.tw';
+
+/**
+ * 登入 API
+ * 使用 apiRequest helper 呼叫後端 API
+ */
+const loginApi = async ({
+  customHeaders,
+  payload,
+}: {
+  customHeaders: Record<string, string>;
+  payload: LoginCredentials;
+}): Promise<ApiResponse<LoginData>> => {
+  return apiRequest<LoginData>(
+    API_BASE_URL,
+    '/auth/login',
+    'POST',
+    {
+      account: payload.account,
+      password: payload.password,
+      notificationToken: payload.notificationToken || 'expo_default_token',
+    },
+    customHeaders
+  );
+};
+
+/**
+ * 登出 API
+ * 使用 apiRequest helper 呼叫後端 API
+ */
+const logoutApi = async ({
+  customHeaders,
+}: {
+  customHeaders: Record<string, string>;
+  payload?: any;
+}): Promise<ApiResponse<void>> => {
+  // 如果後端有登出 API，使用以下代碼
+  return apiRequest<void>(
+    API_BASE_URL,
+    '/auth/logout',
+    'POST',
+    {},
+    customHeaders
+  );
+  
+  // 如果沒有登出 API，返回模擬響應
+  // return Promise.resolve({
+  //   success: true,
+  //   message: '登出成功',
+  //   data: undefined as any,
+  //   code: 'SUCCESS',
+  // });
+};
+
+/**
  * Login Saga
- * 處理登入流程的 saga
+ * 使用 fetchAPIResult helper 處理登入流程
  */
 function* loginSaga(action: PayloadAction<LoginCredentials>) {
-  try {
-    // 開始登入流程
-    yield put(loginStart());
+  // 開始登入（設置 loading 狀態）
+  yield put(loginStart());
 
-    // 呼叫 API（使用 call effect 以便於測試）
-    const user: LoginResponse = yield call(loginApi, action.payload);
+  // 使用 fetchAPIResult helper 呼叫登入 API
+  yield call(fetchAPIResult<LoginCredentials, LoginData>, {
+    apiResult: loginApi,
+    payload: action.payload,
+    action: 'auth/login',
+    message: '登入成功！歡迎回來',
+    tokenSelector: (state: RootState) => state.auth.accessToken,
+    
+    // 成功回調
+    onSuccess: function* (data: LoginData) {
+      console.log('✅ 登入成功:', {
+        userId: data.user.id,
+        userName: data.user.name,
+        account: data.user.account,
+      });
 
-    // 可以在這裡處理其他副作用
-    // 例如：儲存 token 到 localStorage (Web) 或 AsyncStorage (React Native)
-    if (user.token) {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('authToken', user.token);
+      // 儲存 token 到本地存儲
+      if (data.access_token) {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('authToken', data.access_token);
+          localStorage.setItem('expireIn', data.expireIn.toString());
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+        // TODO: React Native 使用 AsyncStorage
+        // import AsyncStorage from '@react-native-async-storage/async-storage';
+        // AsyncStorage.setItem('authToken', data.access_token);
+        // AsyncStorage.setItem('expireIn', data.expireIn.toString());
+        // AsyncStorage.setItem('user', JSON.stringify(data.user));
       }
-      // React Native: await AsyncStorage.setItem('authToken', user.token);
-    }
 
-    // 登入成功
-    yield put(loginSuccess({ id: user.id, name: user.name }));
-  } catch (error) {
-    // 登入失敗
-    const errorMessage = error instanceof Error ? error.message : '未知錯誤';
-    yield put(loginFailure(errorMessage));
-  }
+      // Dispatch loginSuccess（更新 Redux State）
+      yield put(loginSuccess({
+        user: data.user,
+        accessToken: data.access_token,
+        expireIn: data.expireIn,
+      }));
+    },
+    
+    // 錯誤回調
+    onError: function* (error) {
+      console.error('❌ 登入失敗:', {
+        code: error.code,
+        message: error.message,
+      });
+
+      // Dispatch loginFailure（設置錯誤訊息）
+      yield put(loginFailure(error.message));
+    },
+  });
 }
 
 /**
  * Logout Saga
- * 處理登出流程的 saga
+ * 使用 fetchAPIResult helper 處理登出流程
  */
 function* logoutSaga() {
-  try {
-    // 可以在這裡處理登出的副作用
-    // 例如：清除 token、呼叫登出 API 等
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem('authToken');
-    }
-    // React Native: await AsyncStorage.removeItem('authToken');
+  console.log('🔄 開始登出流程');
+
+  // 使用 fetchAPIResult helper 呼叫登出 API
+  yield call(fetchAPIResult, {
+    apiResult: logoutApi,
+    payload: {},
+    action: 'auth/logout',
+    message: '登出成功，期待您再次光臨',
+    tokenSelector: (state: RootState) => state.auth.accessToken,
     
-    // 延遲一下讓使用者看到登出動畫（可選）
-    yield delay(300);
+    // 成功回調
+    onSuccess: function* () {
+      console.log('✅ 登出 API 呼叫成功');
+
+      // 清除本地存儲
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('expireIn');
+        localStorage.removeItem('user');
+      }
+      // TODO: React Native 使用 AsyncStorage
+      // AsyncStorage.multiRemove(['authToken', 'expireIn', 'user']);
+
+      // 延遲一下讓使用者看到登出動畫
+      yield delay(300);
+      
+      // Dispatch logout（清除 Redux State）
+      yield put(logout());
+    },
     
-    // 觸發登出 action
-    yield put({ type: 'auth/logout' });
-    
-    console.log('✅ 登出成功');
-  } catch (error) {
-    console.error('❌ 登出失敗', error);
-    // 即使失敗也執行登出
-    yield put({ type: 'auth/logout' });
-  }
+    // 錯誤回調
+    onError: function* (error) {
+      console.error('❌ 登出失敗:', error);
+      
+      // 即使 API 失敗，也要清除本地數據並登出
+      if (typeof localStorage !== 'undefined') {
+        localStorage.clear();
+      }
+      
+      // Dispatch logout
+      yield put(logout());
+    },
+  });
 }
 
 /**

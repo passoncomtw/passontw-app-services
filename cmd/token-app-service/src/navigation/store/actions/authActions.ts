@@ -1,7 +1,7 @@
 import { AUTH_SAGA_ACTIONS } from "../sagas/authSagas";
 
 export interface LoginRequest {
-  username: string;
+  account: string;
   password: string;
 }
 
