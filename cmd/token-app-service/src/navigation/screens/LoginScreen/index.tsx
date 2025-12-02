@@ -25,10 +25,12 @@ import {
   Text as RNText,
   StatusBar
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '@/navigation/store/hooks';
 import { loginRequest } from '@/navigation/store/actions/authActions';
 
 export default function LoginScreen() {
+  const navigation = useNavigation();
   const dispatch = useAppDispatch();
   const { loading, error } = useAppSelector((state) => state.auth);
   
@@ -56,7 +58,7 @@ export default function LoginScreen() {
   };
 
   const handleRegister = () => {
-    Alert.alert('免費註冊', '此功能開發中...');
+    navigation.navigate('Register' as never);
   };
 
   return (
@@ -115,16 +117,6 @@ export default function LoginScreen() {
                   onSubmitEditing={handleLogin}
                   returnKeyType="go"
                 />
-              </View>
-
-              {/* 輔助連結 */}
-              <View style={styles.helperLinks}>
-                <Pressable onPress={handleForgotPassword}>
-                  <RNText style={styles.linkText}>忘記登入密碼？</RNText>
-                </Pressable>
-                <Pressable onPress={handleCustomerService}>
-                  <RNText style={styles.linkText}>24h 客服</RNText>
-                </Pressable>
               </View>
             </View>
 

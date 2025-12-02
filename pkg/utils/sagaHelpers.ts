@@ -1,4 +1,5 @@
 import { put, select, call } from 'redux-saga/effects';
+import logger from '../logger';
 
 /**
  * Snackbar 配置
@@ -193,14 +194,14 @@ export default function* fetchAPIResult<TPayload = any, TResponse = any>({
     }
 
     // 呼叫 API
-    console.log(`🔄 [${action}] API 請求開始`);
+    logger.debug(`[${action}] API 請求開始`);
     
     const resp: ApiResponse<TResponse> = yield call(apiResult, {
       customHeaders,
       payload,
     });
 
-    console.log(`✅ [${action}] API 響應:`, {
+    logger.info(`[${action}] API 響應成功`, {
       success: resp.success,
       code: resp.code,
     });
@@ -243,7 +244,7 @@ export default function* fetchAPIResult<TPayload = any, TResponse = any>({
       }
     }
   } catch (error: any) {
-    console.error(`❌ [${action}] API 錯誤:`, error);
+    logger.error(`[${action}] API 錯誤`, error);
 
     // 標準化錯誤格式
     let errorPayload: ErrorPayload;
@@ -315,13 +316,13 @@ export async function apiRequest<T = any>(
     options.body = JSON.stringify(body);
   }
 
-  console.log(`📡 API 請求: ${method} ${url}`);
+  logger.debug(`API 請求: ${method} ${url}`);
 
   try {
     const response = await fetch(url, options);
     const data: ApiResponse<T> = await response.json();
 
-    console.log(`📦 API 響應: ${response.status}`, {
+    logger.debug(`API 響應: ${response.status}`, {
       success: data.success,
       code: data.code,
     });
@@ -335,7 +336,7 @@ export async function apiRequest<T = any>(
 
     return data;
   } catch (error) {
-    console.error('❌ API 請求異常:', error);
+    logger.error('API 請求異常', error);
 
     // 網路錯誤處理
     if (error instanceof TypeError) {

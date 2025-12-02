@@ -20,5 +20,11 @@ config.resolver.extraNodeModules = {
   '@pkg': path.resolve(workspaceRoot, 'pkg'),
 };
 
+// 4. 配置模組別名
+config.resolver.alias = {
+  '@pkg/utils': path.resolve(workspaceRoot, 'pkg/utils'),
+  '@pkg/logger': path.resolve(workspaceRoot, 'pkg/logger'),
+};
+
 module.exports = config;
 

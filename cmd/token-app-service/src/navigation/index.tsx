@@ -8,6 +8,7 @@ import Explore from './screens/ExploreScreen';
 import Home from './screens/HomeScreen';
 import NotFound from './screens/NotFoundScreen';
 import LoginScreen from './screens/LoginScreen';
+import RegisterScreen from './screens/RegisterScreen';
 
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -96,6 +97,11 @@ function PublicStack() {
         component={LoginScreen}
         options={{ title: '登入' }}
       />
+      <Stack.Screen 
+        name="Register" 
+        component={RegisterScreen}
+        options={{ title: '註冊' }}
+      />
     </Stack.Navigator>
   );
 }
@@ -150,6 +156,7 @@ type RootStackParamList = {
 
 type PublicStackParamList = {
   Login: undefined;
+  Register: undefined;
 };
 
 declare global {

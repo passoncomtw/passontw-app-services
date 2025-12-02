@@ -1,0 +1,183 @@
+/**
+ * Logger 模組
+ * 提供統一的日誌記錄功能，支持不同層級的日誌輸出
+ */
+
+/**
+ * 日誌層級
+ */
+export enum LogLevel {
+  DEBUG = 0,
+  INFO = 1,
+  WARN = 2,
+  ERROR = 3,
+  NONE = 4,
+}
+
+/**
+ * Logger 配置
+ */
+interface LoggerConfig {
+  level: LogLevel;
+  enableTimestamp: boolean;
+  enableColors: boolean;
+}
+
+/**
+ * 默認配置
+ */
+const defaultConfig: LoggerConfig = {
+  level: __DEV__ ? LogLevel.DEBUG : LogLevel.WARN,
+  enableTimestamp: true,
+  enableColors: true,
+};
+
+/**
+ * 當前配置
+ */
+let currentConfig: LoggerConfig = { ...defaultConfig };
+
+/**
+ * 日誌顏色映射（僅用於終端輸出）
+ */
+const levelColors = {
+  [LogLevel.DEBUG]: '🔍',
+  [LogLevel.INFO]: 'ℹ️',
+  [LogLevel.WARN]: '⚠️',
+  [LogLevel.ERROR]: '❌',
+};
+
+const levelNames = {
+  [LogLevel.DEBUG]: 'DEBUG',
+  [LogLevel.INFO]: 'INFO',
+  [LogLevel.WARN]: 'WARN',
+  [LogLevel.ERROR]: 'ERROR',
+};
+
+/**
+ * 格式化時間戳
+ */
+const formatTimestamp = (): string => {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
+  return `${hours}:${minutes}:${seconds}.${milliseconds}`;
+};
+
+/**
+ * 格式化日誌訊息
+ */
+const formatMessage = (level: LogLevel, message: string, data?: any): string => {
+  const parts: string[] = [];
+
+  if (currentConfig.enableTimestamp) {
+    parts.push(`[${formatTimestamp()}]`);
+  }
+
+  if (currentConfig.enableColors) {
+    parts.push(`${levelColors[level]} ${levelNames[level]}`);
+  } else {
+    parts.push(`[${levelNames[level]}]`);
+  }
+
+  parts.push(message);
+
+  return parts.join(' ');
+};
+
+/**
+ * 核心日誌函數
+ */
+const log = (level: LogLevel, message: string, ...args: any[]) => {
+  // 檢查日誌層級
+  if (level < currentConfig.level) {
+    return;
+  }
+
+  const formattedMessage = formatMessage(level, message);
+
+  // 根據層級選擇 console 方法
+  switch (level) {
+    case LogLevel.DEBUG:
+    case LogLevel.INFO:
+      console.log(formattedMessage, ...args);
+      break;
+    case LogLevel.WARN:
+      console.warn(formattedMessage, ...args);
+      break;
+    case LogLevel.ERROR:
+      console.error(formattedMessage, ...args);
+      break;
+  }
+};
+
+/**
+ * Logger 對象
+ */
+export const logger = {
+  /**
+   * DEBUG 層級日誌
+   * 用於詳細的調試信息
+   */
+  debug: (message: string, ...args: any[]) => {
+    log(LogLevel.DEBUG, message, ...args);
+  },
+
+  /**
+   * INFO 層級日誌
+   * 用於一般信息
+   */
+  info: (message: string, ...args: any[]) => {
+    log(LogLevel.INFO, message, ...args);
+  },
+
+  /**
+   * WARN 層級日誌
+   * 用於警告信息
+   */
+  warn: (message: string, ...args: any[]) => {
+    log(LogLevel.WARN, message, ...args);
+  },
+
+  /**
+   * ERROR 層級日誌
+   * 用於錯誤信息
+   */
+  error: (message: string, ...args: any[]) => {
+    log(LogLevel.ERROR, message, ...args);
+  },
+
+  /**
+   * 設置日誌層級
+   */
+  setLevel: (level: LogLevel) => {
+    currentConfig.level = level;
+  },
+
+  /**
+   * 設置配置
+   */
+  configure: (config: Partial<LoggerConfig>) => {
+    currentConfig = { ...currentConfig, ...config };
+  },
+
+  /**
+   * 重置為默認配置
+   */
+  reset: () => {
+    currentConfig = { ...defaultConfig };
+  },
+
+  /**
+   * 獲取當前配置
+   */
+  getConfig: () => ({ ...currentConfig }),
+};
+
+/**
+ * 默認導出
+ */
+export default logger;
+

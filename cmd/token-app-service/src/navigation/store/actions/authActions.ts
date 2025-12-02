@@ -5,6 +5,16 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface RegisterRequest {
+  nickname: string;
+  account: string;
+  email: string;
+  password: string;
+  transactionPassword: string;
+  referralCode?: string;
+  notificationToken?: string;
+}
+
 export interface LoginSuccess {
   id: string;
   name: string;
@@ -12,6 +22,11 @@ export interface LoginSuccess {
 
 export const loginRequest = (payload: LoginRequest) => ({
   type: AUTH_SAGA_ACTIONS.LOGIN_REQUEST,
+  payload,
+});
+
+export const registerRequest = (payload: RegisterRequest) => ({
+  type: AUTH_SAGA_ACTIONS.REGISTER_REQUEST,
   payload,
 });
 

@@ -1,8 +1,9 @@
 import { call, put, takeLatest, delay } from 'redux-saga/effects';
 import { PayloadAction } from '@reduxjs/toolkit';
 import Constants from 'expo-constants';
-import { loginStart, loginSuccess, loginFailure, logout } from '../slices/authSlices';
+import { loginStart, loginSuccess, loginFailure, logout, registerSuccess } from '../slices/authSlices';
 import fetchAPIResult, { apiRequest, type ApiResponse } from '@pkg/utils/sagaHelpers';
+import logger from '@pkg/logger';
 import type { RootState } from '../configureStore';
 
 /**
@@ -11,6 +12,7 @@ import type { RootState } from '../configureStore';
  */
 export const AUTH_SAGA_ACTIONS = {
   LOGIN_REQUEST: 'auth/loginRequest',
+  REGISTER_REQUEST: 'auth/registerRequest',
   LOGOUT_REQUEST: 'auth/logoutRequest',
 } as const;
 
@@ -21,6 +23,33 @@ interface LoginCredentials {
   account: string;
   password: string;
   notificationToken?: string;
+}
+
+/**
+ * 註冊憑證
+ */
+interface RegisterCredentials {
+  nickname: string;
+  account: string;
+  email: string;
+  password: string;
+  transactionPassword: string;
+  referralCode?: string;
+  notificationToken?: string;
+}
+
+/**
+ * 註冊響應數據（不包含 token，需要再次登入）
+ */
+interface RegisterData {
+  id: number;
+  type: number;
+  account: string;
+  name: string;
+  email: string;
+  createAt: string;
+  referralCode: string;
+  wallet: UserWallet;
 }
 
 /**
@@ -88,6 +117,34 @@ const loginApi = async ({
 };
 
 /**
+ * 註冊 API
+ * 使用 apiRequest helper 呼叫後端 API
+ */
+const registerApi = async ({
+  customHeaders,
+  payload,
+}: {
+  customHeaders: Record<string, string>;
+  payload: RegisterCredentials;
+}): Promise<ApiResponse<RegisterData>> => {
+  return apiRequest<RegisterData>(
+    API_BASE_URL,
+    '/users',
+    'POST',
+    {
+      account: payload.account,
+      email: payload.email,
+      name: payload.nickname,  // 使用 nickname 作為 name
+      password: payload.password,
+      transactionCode: payload.transactionPassword,  // transactionPassword -> transactionCode
+      referralCode: payload.referralCode || '',
+      type: 0,  // 默認用戶類型
+    },
+    customHeaders
+  );
+};
+
+/**
  * 登出 API
  * 使用 apiRequest helper 呼叫後端 API
  */
@@ -133,7 +190,7 @@ function* loginSaga(action: PayloadAction<LoginCredentials>) {
     
     // 成功回調
     onSuccess: function* (data: LoginData) {
-      console.log('✅ 登入成功:', {
+      logger.info('登入成功', {
         userId: data.user.id,
         userName: data.user.name,
         account: data.user.account,
@@ -163,7 +220,48 @@ function* loginSaga(action: PayloadAction<LoginCredentials>) {
     
     // 錯誤回調
     onError: function* (error: { code: string; message: string }) {
-      console.error('❌ 登入失敗:', {
+      logger.error('登入失敗', {
+        code: error.code,
+        message: error.message,
+      });
+
+      // Dispatch loginFailure（設置錯誤訊息）
+      yield put(loginFailure(error.message));
+    },
+  });
+}
+
+/**
+ * Register Saga
+ * 使用 fetchAPIResult helper 處理註冊流程
+ * 註冊成功後返回登入頁面
+ */
+function* registerSaga(action: PayloadAction<RegisterCredentials>) {
+  // 開始註冊（設置 loading 狀態）
+  yield put(loginStart());
+
+  // 使用 fetchAPIResult helper 呼叫註冊 API
+  yield call(fetchAPIResult<RegisterCredentials, RegisterData>, {
+    apiResult: registerApi,
+    payload: action.payload,
+    action: 'auth/register',
+    message: '註冊成功！請使用您的帳號密碼登入',
+    
+    // 成功回調
+    onSuccess: function* (data: RegisterData) {
+      logger.info('註冊成功', {
+        userId: data.id,
+        userName: data.name,
+        account: data.account,
+      });
+
+      // 清除 loading 狀態並標記註冊成功
+      yield put(registerSuccess());
+    },
+    
+    // 錯誤回調
+    onError: function* (error: { code: string; message: string }) {
+      logger.error('註冊失敗', {
         code: error.code,
         message: error.message,
       });
@@ -179,7 +277,7 @@ function* loginSaga(action: PayloadAction<LoginCredentials>) {
  * 使用 fetchAPIResult helper 處理登出流程
  */
 function* logoutSaga() {
-  console.log('🔄 開始登出流程');
+  logger.info('開始登出流程');
 
   // 使用 fetchAPIResult helper 呼叫登出 API
   yield call(fetchAPIResult, {
@@ -191,7 +289,7 @@ function* logoutSaga() {
     
     // 成功回調
     onSuccess: function* () {
-      console.log('✅ 登出 API 呼叫成功');
+      logger.info('登出 API 呼叫成功');
 
       // 清除本地存儲
       if (typeof localStorage !== 'undefined') {
@@ -211,7 +309,7 @@ function* logoutSaga() {
     
     // 錯誤回調
     onError: function* (error: { code: string; message: string }) {
-      console.error('❌ 登出失敗:', error);
+      logger.error('登出失敗', error);
       
       // 即使 API 失敗，也要清除本地數據並登出
       if (typeof localStorage !== 'undefined') {
@@ -231,5 +329,6 @@ function* logoutSaga() {
 export function* watchAuthSagas() {
   // takeLatest: 如果有多個請求，只處理最新的一個
   yield takeLatest(AUTH_SAGA_ACTIONS.LOGIN_REQUEST, loginSaga);
+  yield takeLatest(AUTH_SAGA_ACTIONS.REGISTER_REQUEST, registerSaga);
   yield takeLatest(AUTH_SAGA_ACTIONS.LOGOUT_REQUEST, logoutSaga);
 }
