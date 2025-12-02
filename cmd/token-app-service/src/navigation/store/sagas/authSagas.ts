@@ -162,7 +162,7 @@ function* loginSaga(action: PayloadAction<LoginCredentials>) {
     },
     
     // 錯誤回調
-    onError: function* (error) {
+    onError: function* (error: { code: string; message: string }) {
       console.error('❌ 登入失敗:', {
         code: error.code,
         message: error.message,
@@ -210,7 +210,7 @@ function* logoutSaga() {
     },
     
     // 錯誤回調
-    onError: function* (error) {
+    onError: function* (error: { code: string; message: string }) {
       console.error('❌ 登出失敗:', error);
       
       // 即使 API 失敗，也要清除本地數據並登出
