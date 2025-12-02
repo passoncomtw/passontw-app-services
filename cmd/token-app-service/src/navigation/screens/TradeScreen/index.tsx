@@ -2,8 +2,11 @@
  * TradeScreen - 交易頁面
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, StatusBar } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
+
+type TradeScreenRouteProp = RouteProp<{ Trade: { initialTab?: 'buy' | 'sell' } }, 'Trade'>;
 
 interface Transaction {
   id: string;
@@ -100,7 +103,15 @@ const mockSellTransactions: Transaction[] = [
 ];
 
 export default function TradeScreen() {
+  const route = useRoute<TradeScreenRouteProp>();
   const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('buy');
+
+  // 接收從其他頁面傳來的 initialTab 參數
+  useEffect(() => {
+    if (route.params?.initialTab) {
+      setActiveTab(route.params.initialTab);
+    }
+  }, [route.params?.initialTab]);
 
   // 根據 tab 選擇資料
   const transactions = activeTab === 'buy' ? mockBuyTransactions : mockSellTransactions;

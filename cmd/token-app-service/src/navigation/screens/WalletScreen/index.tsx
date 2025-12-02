@@ -4,9 +4,11 @@
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, StatusBar } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useAppSelector } from '@/navigation/store/hooks';
 
 export default function WalletScreen() {
+  const navigation = useNavigation();
   const { user } = useAppSelector((state) => state.auth);
   const [balanceVisible, setBalanceVisible] = useState(true);
 
@@ -31,6 +33,11 @@ export default function WalletScreen() {
       return formatNumber(amount);
     }
     return '****';
+  };
+
+  // 導航到交易頁面並設置 tab
+  const navigateToTrade = (tab: 'buy' | 'sell') => {
+    navigation.navigate('Trade', { initialTab: tab });
   };
 
   return (
@@ -100,6 +107,7 @@ export default function WalletScreen() {
               styles.actionItem,
               pressed && styles.actionItemPressed,
             ]}
+            onPress={() => navigateToTrade('buy')}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#E3F2FD' }]}>
               <Text style={styles.actionIconText}>💰</Text>
@@ -115,6 +123,7 @@ export default function WalletScreen() {
               styles.actionItem,
               pressed && styles.actionItemPressed,
             ]}
+            onPress={() => navigateToTrade('sell')}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#FFF3E0' }]}>
               <Text style={styles.actionIconText}>💸</Text>

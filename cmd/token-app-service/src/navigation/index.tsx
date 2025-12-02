@@ -192,7 +192,7 @@ type PublicStackParamList = {
 
 type TabParamList = {
   Wallet: undefined;
-  Trade: undefined;
+  Trade: { initialTab?: 'buy' | 'sell' };
   Orders: undefined;
   OrderList: undefined;
   Profile: undefined;
