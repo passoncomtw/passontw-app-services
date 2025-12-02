@@ -3,12 +3,13 @@ import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import * as React from 'react';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, ActivityIndicator, View } from 'react-native';
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
 
 import { Colors } from './constants/Colors';
 import { Navigation } from './navigation';
-import { Provider } from 'react-redux';
-import { store } from './navigation/store/configureStore';
+import { store, persistor } from './navigation/store/configureStore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -36,19 +37,28 @@ export function App() {
 
   return (
     <Provider store={store}>
-      <Navigation
-        theme={theme}
-        linking={{
-          enabled: 'auto',
-          prefixes: [
-            // Change the scheme to match your app's scheme defined in app.json
-            'helloworld://',
-          ],
-        }}
-        onReady={() => {
-            SplashScreen.hideAsync();
+      <PersistGate 
+        loading={
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+            <ActivityIndicator size="large" color="#007AFF" />
+          </View>
+        } 
+        persistor={persistor}
+      >
+        <Navigation
+          theme={theme}
+          linking={{
+            enabled: 'auto',
+            prefixes: [
+              // Change the scheme to match your app's scheme defined in app.json
+              'helloworld://',
+            ],
           }}
-        />
+          onReady={() => {
+              SplashScreen.hideAsync();
+            }}
+          />
+      </PersistGate>
     </Provider>
   );
 }
