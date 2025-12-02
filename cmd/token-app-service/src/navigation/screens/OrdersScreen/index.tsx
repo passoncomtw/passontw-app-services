@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, StatusBar, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, StatusBar, Alert, ScrollView } from 'react-native';
 import EmptyState from './components/EmptyState';
 import OrdersList, { PendingOrder } from './components/OrdersList';
 
