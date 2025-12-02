@@ -4,8 +4,11 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Platform, ActivityIndicator, View, StyleSheet } from 'react-native';
 import { useAppSelector } from './store/hooks';
 
-import Explore from './screens/ExploreScreen';
-import Home from './screens/HomeScreen';
+import WalletScreen from './screens/WalletScreen';
+import TradeScreen from './screens/TradeScreen';
+import OrdersScreen from './screens/OrdersScreen';
+import OrderListScreen from './screens/OrderListScreen';
+import ProfileScreen from './screens/ProfileScreen';
 import NotFound from './screens/NotFoundScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
@@ -23,30 +26,58 @@ function HomeTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-    headerShown: false,
-    tabBarButton: HapticTab,
-    tabBarBackground: TabBarBackground,
-    tabBarStyle: Platform.select({
-      ios: {
-        // Use a transparent background on iOS to show the blur effect
-        position: 'absolute' as const,
-      },
+        headerShown: false,
+        tabBarButton: HapticTab,
+        tabBarBackground: TabBarBackground,
+        tabBarStyle: Platform.select({
+          ios: {
+            // Use a transparent background on iOS to show the blur effect
+            position: 'absolute' as const,
+          },
           default: {},
-    }),
+        }),
+        tabBarActiveTintColor: '#007AFF',
+        tabBarInactiveTintColor: '#8E8E93',
       }}
     >
       <Tab.Screen
-        name="Home"
-        component={Home}
+        name="Wallet"
+        component={WalletScreen}
         options={{
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: '錢包',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="wallet.pass.fill" color={color} />,
         }}
       />
       <Tab.Screen
-        name="Explore"
-        component={Explore}
+        name="Trade"
+        component={TradeScreen}
         options={{
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: '交易',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="arrow.left.arrow.right" color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Orders"
+        component={OrdersScreen}
+        options={{
+          title: '掛單',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.clipboard.fill" color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="OrderList"
+        component={OrderListScreen}
+        options={{
+          title: '訂單',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="doc.text.fill" color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          title: '我',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
         }}
       />
     </Tab.Navigator>
@@ -159,8 +190,16 @@ type PublicStackParamList = {
   Register: undefined;
 };
 
+type TabParamList = {
+  Wallet: undefined;
+  Trade: undefined;
+  Orders: undefined;
+  OrderList: undefined;
+  Profile: undefined;
+};
+
 declare global {
   namespace ReactNavigation {
-    interface RootParamList extends RootStackParamList, PublicStackParamList {}
+    interface RootParamList extends RootStackParamList, PublicStackParamList, TabParamList {}
   }
 }
