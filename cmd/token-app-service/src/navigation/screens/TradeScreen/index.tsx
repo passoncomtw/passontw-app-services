@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, StatusBar } from 'react-native';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 
 type TradeScreenRouteProp = RouteProp<{ Trade: { initialTab?: 'buy' | 'sell' } }, 'Trade'>;
 
@@ -104,6 +104,7 @@ const mockSellTransactions: Transaction[] = [
 
 export default function TradeScreen() {
   const route = useRoute<TradeScreenRouteProp>();
+  const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('buy');
 
   // 接收從其他頁面傳來的 initialTab 參數
@@ -125,8 +126,27 @@ export default function TradeScreen() {
   };
 
   const handleTransactionPress = (transaction: Transaction) => {
-    // TODO: 導航到建立訂單頁面
-    console.log('選擇交易:', transaction);
+    if (activeTab === 'buy') {
+      // 導航到購買 e 幣頁面
+      navigation.navigate('CreateOrderBuy', {
+        sellerName: transaction.userName,
+        minAmount: transaction.minLimit,
+        maxAmount: transaction.maxLimit,
+        price: transaction.price,
+        paymentMethod: transaction.paymentMethod,
+        paymentTimeout: 15, // 預設 15 分鐘
+      });
+    } else {
+      // 導航到出售 e 幣頁面
+      navigation.navigate('CreateOrderSell', {
+        buyerName: transaction.userName,
+        minAmount: transaction.minLimit,
+        maxAmount: transaction.maxLimit,
+        price: transaction.price,
+        paymentMethod: transaction.paymentMethod,
+        paymentTimeout: 15, // 預設 15 分鐘
+      });
+    }
   };
 
   // 根據 tab 和 badge 顯示不同的標籤文字

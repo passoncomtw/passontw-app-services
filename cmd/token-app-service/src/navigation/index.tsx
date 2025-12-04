@@ -9,6 +9,8 @@ import TradeScreen from './screens/TradeScreen';
 import OrdersScreen from './screens/OrdersScreen';
 import OrderListScreen from './screens/OrderListScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import CreateOrderBuyScreen from './screens/CreateOrderBuyScreen';
+import CreateOrderSellScreen from './screens/CreateOrderSellScreen';
 import NotFound from './screens/NotFoundScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
@@ -109,6 +111,14 @@ function AuthenticatedStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeTabs" component={HomeTabs} />
       <Stack.Screen 
+        name="CreateOrderBuy" 
+        component={CreateOrderBuyScreen}
+      />
+      <Stack.Screen 
+        name="CreateOrderSell" 
+        component={CreateOrderSellScreen}
+      />
+      <Stack.Screen 
         name="NotFound" 
         component={NotFound}
         options={{ title: '404', headerShown: true }}
@@ -182,6 +192,22 @@ const styles = StyleSheet.create({
 // 型別定義
 type RootStackParamList = {
   HomeTabs: undefined;
+  CreateOrderBuy: {
+    sellerName: string;
+    minAmount: number;
+    maxAmount: number;
+    price: number;
+    paymentMethod: string;
+    paymentTimeout: number;
+  };
+  CreateOrderSell: {
+    buyerName: string;
+    minAmount: number;
+    maxAmount: number;
+    price: number;
+    paymentMethod: string;
+    paymentTimeout: number;
+  };
   NotFound: undefined;
 };
 
