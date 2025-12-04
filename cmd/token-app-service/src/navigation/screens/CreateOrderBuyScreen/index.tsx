@@ -14,8 +14,50 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  TouchableOpacity,
+  FlatList,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+
+// 帳戶類型
+interface PaymentAccount {
+  id: string;
+  type: 'bank' | 'alipay' | 'wechat';
+  name: string;
+  accountNumber: string;
+  bankName?: string;
+}
+
+// 模擬帳戶資料
+const mockAccounts: PaymentAccount[] = [
+  {
+    id: '1',
+    type: 'bank',
+    name: '王小明',
+    accountNumber: '6217 **** **** 1234',
+    bankName: '中國銀行',
+  },
+  {
+    id: '2',
+    type: 'bank',
+    name: '王小明',
+    accountNumber: '6222 **** **** 5678',
+    bankName: '工商銀行',
+  },
+  {
+    id: '3',
+    type: 'alipay',
+    name: '王小明',
+    accountNumber: '138****8888',
+  },
+  {
+    id: '4',
+    type: 'wechat',
+    name: '王小明',
+    accountNumber: 'wxid_****abcd',
+  },
+];
 
 type CreateOrderBuyRouteProp = RouteProp<{ 
   CreateOrderBuy: { 
@@ -43,8 +85,9 @@ export default function CreateOrderBuyScreen() {
   } = route.params || {};
 
   const [amount, setAmount] = useState('1000');
-  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<PaymentAccount | null>(null);
   const [transactionPassword, setTransactionPassword] = useState('');
+  const [showAccountModal, setShowAccountModal] = useState(false);
 
   // 計算交易金額
   const totalPrice = parseFloat(amount || '0') * price;
@@ -53,9 +96,33 @@ export default function CreateOrderBuyScreen() {
     return num.toLocaleString('zh-TW');
   };
 
+  // 取得帳戶類型圖標
+  const getAccountTypeIcon = (type: PaymentAccount['type']) => {
+    switch (type) {
+      case 'bank': return '🏦';
+      case 'alipay': return '💳';
+      case 'wechat': return '💬';
+      default: return '💰';
+    }
+  };
+
+  // 取得帳戶類型名稱
+  const getAccountTypeName = (type: PaymentAccount['type']) => {
+    switch (type) {
+      case 'bank': return '銀行卡';
+      case 'alipay': return '支付寶';
+      case 'wechat': return '微信';
+      default: return '其他';
+    }
+  };
+
   const handleSelectAccount = () => {
-    // TODO: 導航到選擇帳戶頁面
-    Alert.alert('選擇帳戶', '功能開發中...');
+    setShowAccountModal(true);
+  };
+
+  const handleAccountSelect = (account: PaymentAccount) => {
+    setSelectedAccount(account);
+    setShowAccountModal(false);
   };
 
   const handleSubmit = () => {
@@ -78,12 +145,23 @@ export default function CreateOrderBuyScreen() {
       return;
     }
 
-    // TODO: 提交訂單
+    // 提交訂單後跳轉到確認頁面
     Alert.alert('確認購買', `確定購買 ${formatNumber(amountNum)} E幣？`, [
       { text: '取消', style: 'cancel' },
       { text: '確定', onPress: () => {
-        Alert.alert('成功', '訂單已提交');
-        navigation.goBack();
+        // 生成訂單編號
+        const orderNumber = `${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${new Date().getDate().toString().padStart(2, '0')}${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+        
+        navigation.navigate('ConfirmOrderBuy', {
+          orderNumber,
+          amount: amountNum,
+          totalPrice,
+          sellerName,
+          paymentTimeout,
+          bankName: '中國銀行',
+          bankAccount: '6217 **** **** 1234',
+          accountHolder: sellerName,
+        });
       }},
     ]);
   };
@@ -153,9 +231,23 @@ export default function CreateOrderBuyScreen() {
                 ]}
                 onPress={handleSelectAccount}
               >
-                <Text style={selectedAccount ? styles.selectText : styles.selectPlaceholder}>
-                  {selectedAccount || '請選擇付款帳戶'}
-                </Text>
+                {selectedAccount ? (
+                  <View style={styles.selectedAccountInfo}>
+                    <Text style={styles.selectedAccountIcon}>
+                      {getAccountTypeIcon(selectedAccount.type)}
+                    </Text>
+                    <View style={styles.selectedAccountDetails}>
+                      <Text style={styles.selectedAccountType}>
+                        {selectedAccount.bankName || getAccountTypeName(selectedAccount.type)}
+                      </Text>
+                      <Text style={styles.selectedAccountNumber}>
+                        {selectedAccount.accountNumber}
+                      </Text>
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={styles.selectPlaceholder}>請選擇付款帳戶</Text>
+                )}
                 <Text style={styles.selectArrow}>›</Text>
               </Pressable>
               <Text style={styles.hint}>
@@ -207,6 +299,57 @@ export default function CreateOrderBuyScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* 帳戶選擇 Modal */}
+      <Modal
+        visible={showAccountModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAccountModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>選擇付款帳戶</Text>
+              <TouchableOpacity 
+                onPress={() => setShowAccountModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={mockAccounts}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.accountItem,
+                    selectedAccount?.id === item.id && styles.accountItemSelected,
+                  ]}
+                  onPress={() => handleAccountSelect(item)}
+                >
+                  <Text style={styles.accountIcon}>
+                    {getAccountTypeIcon(item.type)}
+                  </Text>
+                  <View style={styles.accountInfo}>
+                    <Text style={styles.accountType}>
+                      {item.bankName || getAccountTypeName(item.type)}
+                    </Text>
+                    <Text style={styles.accountNumber}>{item.accountNumber}</Text>
+                    <Text style={styles.accountName}>{item.name}</Text>
+                  </View>
+                  {selectedAccount?.id === item.id && (
+                    <Text style={styles.accountCheckmark}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+              ItemSeparatorComponent={() => <View style={styles.accountSeparator} />}
+              style={styles.accountList}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -363,6 +506,108 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 16,
+  },
+  // 選中帳戶樣式
+  selectedAccountInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectedAccountIcon: {
+    fontSize: 20,
+    marginRight: 10,
+  },
+  selectedAccountDetails: {
+    flex: 1,
+  },
+  selectedAccountType: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  selectedAccountNumber: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  // Modal 樣式
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseText: {
+    fontSize: 18,
+    color: '#999',
+  },
+  accountList: {
+    paddingHorizontal: 16,
+  },
+  accountItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  accountItemSelected: {
+    backgroundColor: '#E3F2FD',
+  },
+  accountIcon: {
+    fontSize: 28,
+    marginRight: 12,
+  },
+  accountInfo: {
+    flex: 1,
+  },
+  accountType: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  accountNumber: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+  },
+  accountName: {
+    fontSize: 12,
+    color: '#999',
+  },
+  accountCheckmark: {
+    fontSize: 20,
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
+  accountSeparator: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
   },
 });
 

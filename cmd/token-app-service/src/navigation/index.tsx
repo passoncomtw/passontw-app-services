@@ -11,6 +11,8 @@ import OrderListScreen from './screens/OrderListScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import CreateOrderBuyScreen from './screens/CreateOrderBuyScreen';
 import CreateOrderSellScreen from './screens/CreateOrderSellScreen';
+import ConfirmOrderBuyScreen from './screens/ConfirmOrderBuyScreen';
+import ConfirmOrderSellScreen from './screens/ConfirmOrderSellScreen';
 import NotFound from './screens/NotFoundScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
@@ -119,6 +121,14 @@ function AuthenticatedStack() {
         component={CreateOrderSellScreen}
       />
       <Stack.Screen 
+        name="ConfirmOrderBuy" 
+        component={ConfirmOrderBuyScreen}
+      />
+      <Stack.Screen 
+        name="ConfirmOrderSell" 
+        component={ConfirmOrderSellScreen}
+      />
+      <Stack.Screen 
         name="NotFound" 
         component={NotFound}
         options={{ title: '404', headerShown: true }}
@@ -207,6 +217,25 @@ type RootStackParamList = {
     price: number;
     paymentMethod: string;
     paymentTimeout: number;
+  };
+  ConfirmOrderBuy: {
+    orderNumber: string;
+    amount: number;
+    totalPrice: number;
+    sellerName: string;
+    paymentTimeout: number;
+    bankName: string;
+    bankAccount: string;
+    accountHolder: string;
+  };
+  ConfirmOrderSell: {
+    orderNumber: string;
+    amount: number;
+    totalPrice: number;
+    buyerName: string;
+    paymentTimeout: number;
+    bankName: string;
+    bankAccount: string;
   };
   NotFound: undefined;
 };
