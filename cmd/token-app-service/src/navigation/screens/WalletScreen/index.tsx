@@ -74,7 +74,10 @@ export default function WalletScreen() {
                 = CNY ¥{displayBalance(totalBalance)}
               </Text>
             </View>
-            <Pressable style={styles.orderLink}>
+            <Pressable 
+              style={styles.orderLink}
+              onPress={() => navigation.navigate('OrderList')}
+            >
               <Text style={styles.orderLinkText}>查看訂單</Text>
               <Text style={styles.orderLinkArrow}>→</Text>
             </Pressable>

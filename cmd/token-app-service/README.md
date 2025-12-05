@@ -15,6 +15,7 @@
   - [使用方式](#使用方式)
   - [測試流程](#測試流程)
 - [開發指南](#開發指南)
+- [App Icon 設定](#app-icon-設定)
 
 ---
 
@@ -697,6 +698,166 @@ const handleLogin = () => {
 | `Ctrl + M` | 開啟 Dev Menu | Android (Windows) |
 | `Cmd + R` | 重新載入 | iOS |
 | `R + R` | 重新載入 | Android |
+
+---
+
+## App Icon 設定
+
+### 圖標檔案位置
+
+所有 App 圖標存放於 `src/assets/images/` 目錄：
+
+```
+src/assets/images/
+├── icon.png              # 主要圖標 (1024x1024) - App Store / 通用
+├── ios-icon.png          # iOS 專用圖標 (1024x1024)
+├── android-icon.png      # Android Play Store 圖標 (512x512)
+├── adaptive-icon.png     # Android 自適應圖標前景 (192x192)
+├── favicon.png           # Web favicon
+└── splash-icon.png       # 啟動畫面圖標
+```
+
+### app.json 配置
+
+```json
+{
+  "expo": {
+    "name": "E幣錢包",
+    "icon": "./src/assets/images/icon.png",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.passon.ecoinwallet",
+      "icon": "./src/assets/images/ios-icon.png",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.passon.ecoinwallet",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/images/adaptive-icon.png",
+        "backgroundColor": "#7B68C8"
+      },
+      "icon": "./src/assets/images/android-icon.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#7B68C8",
+          "image": "./src/assets/images/icon.png",
+          "imageWidth": 200
+        }
+      ]
+    ]
+  }
+}
+```
+
+### 圖標規格說明
+
+| 圖標類型 | 檔案名稱 | 尺寸 | 用途 |
+|----------|----------|------|------|
+| 主圖標 | `icon.png` | 1024x1024 | App Store / 通用 |
+| iOS 圖標 | `ios-icon.png` | 1024x1024 | iOS App Store |
+| Android 圖標 | `android-icon.png` | 512x512 | Google Play Store |
+| 自適應圖標 | `adaptive-icon.png` | 192x192 | Android 自適應圖標前景 |
+| Favicon | `favicon.png` | 48x48 | Web 瀏覽器標籤 |
+
+### Android 自適應圖標
+
+Android 8.0+ 支援自適應圖標，由前景和背景組成：
+
+- **前景圖片** (`adaptive-icon.png`): 主要圖案，192x192 PNG
+- **背景顏色** (`backgroundColor`): `#7B68C8` (紫色，與 App 主題一致)
+
+系統會根據裝置製造商的設定，將圖標裁切成不同形狀（圓形、方形、圓角方形等）。
+
+### 啟動畫面 (Splash Screen)
+
+```json
+{
+  "plugins": [
+    [
+      "expo-splash-screen",
+      {
+        "backgroundColor": "#7B68C8",
+        "image": "./src/assets/images/icon.png",
+        "imageWidth": 200
+      }
+    ]
+  ]
+}
+```
+
+- **背景顏色**: 紫色 `#7B68C8`，與錢包頁面主題一致
+- **圖標寬度**: 200px，居中顯示
+
+### 更換圖標步驟
+
+1. **準備圖標檔案**
+   - 確保圖標為 PNG 格式
+   - iOS/主圖標: 1024x1024px
+   - Android Play Store: 512x512px
+   - Android 自適應圖標: 192x192px
+
+2. **替換檔案**
+   ```bash
+   # 複製新圖標到專案
+   cp /path/to/new-icon.png src/assets/images/icon.png
+   cp /path/to/new-ios-icon.png src/assets/images/ios-icon.png
+   cp /path/to/new-android-icon.png src/assets/images/android-icon.png
+   cp /path/to/new-adaptive-icon.png src/assets/images/adaptive-icon.png
+   ```
+
+3. **清除快取並重建**
+   ```bash
+   # 清除 Expo 快取
+   npx expo start -c
+   
+   # 預覽原生專案（檢查圖標）
+   npx expo prebuild --clean
+   ```
+
+### 打包時的圖標處理
+
+#### EAS Build (推薦)
+
+```bash
+# 打包 iOS
+eas build --platform ios
+
+# 打包 Android
+eas build --platform android
+
+# 打包全部平台
+eas build --platform all
+```
+
+EAS Build 會自動：
+- 根據 `app.json` 配置生成所有必要尺寸的圖標
+- iOS: 生成 AppIcon.appiconset 中的所有尺寸
+- Android: 生成 mipmap-* 資料夾中的所有尺寸
+
+#### 本地開發 (Expo Go)
+
+在 Expo Go 中開發時，圖標不會顯示為自訂圖標（會顯示 Expo 圖標）。要看到自訂圖標，需要進行 Development Build 或 Production Build。
+
+### 常見問題
+
+#### Q: 圖標更換後沒有更新？
+
+**A:** 
+1. 清除 Metro bundler 快取：`npx expo start -c`
+2. 如果是原生打包，執行：`npx expo prebuild --clean`
+3. 刪除模擬器中的 App 後重新安裝
+
+#### Q: Android 圖標顯示白邊？
+
+**A:** 確保 `adaptive-icon.png` 的主要內容在安全區域內（圖片中心 66% 區域），避免被裁切。
+
+#### Q: iOS 圖標有透明背景？
+
+**A:** iOS 不支援透明背景的圖標。確保 `ios-icon.png` 有實心背景色。
 
 ---
 

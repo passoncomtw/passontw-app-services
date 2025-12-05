@@ -43,7 +43,9 @@ export default function ConfirmOrderSellScreen() {
 
   // 倒計時（秒）
   const [timeLeft, setTimeLeft] = useState(paymentTimeout * 60);
+  const [isTimeout, setIsTimeout] = useState(false);
 
+  // 倒計時 timer
   useEffect(() => {
     if (timeLeft <= 0) return;
 
@@ -51,8 +53,7 @@ export default function ConfirmOrderSellScreen() {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          Alert.alert('超時', '等待時間已超過，訂單已取消');
-          navigation.goBack();
+          setIsTimeout(true);
           return 0;
         }
         return prev - 1;
@@ -61,6 +62,15 @@ export default function ConfirmOrderSellScreen() {
 
     return () => clearInterval(timer);
   }, []);
+
+  // 超時處理（獨立的 useEffect 避免在 setState 中調用導航）
+  useEffect(() => {
+    if (isTimeout) {
+      Alert.alert('超時', '等待時間已超過，訂單已取消', [
+        { text: '確定', onPress: () => navigation.goBack() }
+      ]);
+    }
+  }, [isTimeout, navigation]);
 
   // 格式化倒計時
   const formatTime = (seconds: number) => {

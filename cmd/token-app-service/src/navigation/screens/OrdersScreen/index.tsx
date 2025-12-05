@@ -33,7 +33,7 @@ const mockOrders: PendingOrder[] = [
 
 export default function OrdersScreen() {
   const [orders, setOrders] = useState<PendingOrder[]>(mockOrders);
-  const [showSuccessAlert, setShowSuccessAlert] = useState(true);
+  const [showSuccessAlert] = useState(false); // 預設不顯示成功訊息
 
   // 檢查是否可以新增掛單（最多一買一賣）
   const canAddBuy = !orders.some(o => o.type === 'buy');
