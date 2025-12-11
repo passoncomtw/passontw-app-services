@@ -3,11 +3,15 @@ import { PayloadAction } from '@reduxjs/toolkit';
 import { 
   FETCH_USER_REQUEST, 
   FETCH_USER_SUCCESS, 
-  FETCH_USER_FAILURE 
+  FETCH_USER_FAILURE,
+  LOGIN_REQUEST,
+  LOGIN_SUCCESS,
+  LOGIN_FAILURE,
 } from '../actions';
 import { setUser, setLoading, setError } from '../reducers/appReducer';
 import { userService } from '../services/userService';
 import { User } from '../types';
+import { authApi } from '../apis';
 
 function* fetchUserSaga(action: PayloadAction<{ userId: string }>) {
   try {
@@ -28,4 +32,37 @@ function* fetchUserSaga(action: PayloadAction<{ userId: string }>) {
 
 export function* appSaga() {
   yield takeEvery(FETCH_USER_REQUEST, fetchUserSaga);
+  yield takeEvery(LOGIN_REQUEST, loginSaga);
+}
+
+function* loginSaga(action: PayloadAction<{ pin: string }>) {
+  try {
+    yield put(setLoading(true));
+    yield put(setError(null));
+
+    const { pin } = action.payload;
+    const data = yield call(authApi.login, pin);
+
+    localStorage.setItem('authToken', data.token);
+
+    const mappedUser: User = {
+      id: data.user.user_id,
+      name: data.user.username || 'POS 使用者',
+      email: data.user.email,
+      username: data.user.username,
+      merchantId: data.user.merchant_id,
+    };
+
+    yield put(setUser(mappedUser));
+    yield put({ type: LOGIN_SUCCESS });
+  } catch (error: any) {
+    const message =
+      error?.response?.data?.message ||
+      error?.message ||
+      '登入失敗，請稍後再試';
+    yield put(setError(message));
+    yield put({ type: LOGIN_FAILURE, payload: { error: message } });
+  } finally {
+    yield put(setLoading(false));
+  }
 }

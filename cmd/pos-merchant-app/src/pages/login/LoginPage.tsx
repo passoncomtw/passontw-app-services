@@ -10,9 +10,11 @@ import {
   TextField,
   Button,
   CircularProgress,
+  Alert,
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
-import { setUser } from '../../reducers/appReducer'
+import { loginRequest } from '../../actions'
+import { setError } from '../../reducers/appReducer'
 import type { RootState } from '../../types'
 
 /**
@@ -20,14 +22,9 @@ import type { RootState } from '../../types'
  */
 const LoginPage: React.FC = () => {
   const [pin, setPin] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const dispatch = useDispatch()
-  const isAuthenticated = useSelector((state: RootState) => state.app.isAuthenticated)
-
-  // 預設 PIN 碼
-  const DEFAULT_PIN = '1234'
+  const { isAuthenticated, loading, error } = useSelector((state: RootState) => state.app)
 
   // 如果已登入，重定向到 POS 主頁面
   useEffect(() => {
@@ -45,37 +42,14 @@ const LoginPage: React.FC = () => {
     }
   }
 
-  const handleLogin = async () => {
+  const handleLogin = () => {
     if (pin.length !== 4) {
-      setError('請輸入 4 位數 PIN 碼')
+      dispatch(setError('請輸入 4 位數 PIN 碼'))
       return
     }
 
-    setLoading(true)
-    setError('')
-
-    try {
-      // 模擬 API 延遲
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      if (pin === DEFAULT_PIN) {
-        // 登入成功，設置用戶狀態
-        dispatch(setUser({
-          id: '1',
-          name: '店員',
-          email: 'staff@example.com',
-        }))
-        // 跳轉到 POS 主頁面
-        navigate('/pos')
-      } else {
-        setError('PIN 碼錯誤，請重新輸入')
-        setPin('')
-      }
-    } catch (err) {
-      setError('登入失敗，請稍後再試')
-    } finally {
-      setLoading(false)
-    }
+    dispatch(setError(null))
+    dispatch(loginRequest(pin))
   }
 
   const handleKeyPress = (event: React.KeyboardEvent) => {
@@ -120,7 +94,7 @@ const LoginPage: React.FC = () => {
                 inputMode: 'numeric',
               }}
               error={!!error}
-              helperText={error}
+              helperText={error || ''}
               disabled={loading}
               sx={{
                 '& .MuiInputBase-input': {
@@ -146,6 +120,12 @@ const LoginPage: React.FC = () => {
           >
             {loading ? <CircularProgress size={24} /> : '登入'}
           </Button>
+
+          {error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {error}
+            </Alert>
+          )}
 
           <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
             <Typography variant="body2" color="text.secondary" gutterBottom>

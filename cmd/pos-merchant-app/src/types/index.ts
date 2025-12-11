@@ -25,6 +25,8 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  username?: string;
+  merchantId?: string;
   avatar?: string;
 }
 
@@ -79,6 +81,18 @@ export interface ApiResponse<T = unknown> {
   data: T;
   message?: string;
   success: boolean;
+}
+
+// Auth
+export interface AuthLoginData {
+  token: string;
+  user: {
+    user_id: string;
+    merchant_id: string;
+    username: string;
+    email: string;
+  };
+  request_id?: string;
 }
 
 // API 錯誤類型
