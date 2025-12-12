@@ -151,9 +151,9 @@ jobs:
         working-directory: cmd/pos-merchant-app
         run: |
           echo "=== Build outputs ==="
-          dir dist\*.exe
+          ls -lh dist/*.exe || true
           echo "=== Disk usage ==="
-          dir dist
+          ls -lh dist || true
 
       - name: 📤 Upload Windows x64 installer
         uses: actions/upload-artifact@v4
