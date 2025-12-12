@@ -245,7 +245,6 @@ jobs:
           echo "=== Build outputs ==="
           ls -lh dist/*.AppImage || true
           ls -lh dist/*.deb || true
-          ls -lh dist/*.rpm || true
           du -sh dist
 
       - name: 📤 Upload Linux AppImage
@@ -260,13 +259,6 @@ jobs:
         with:
           name: linux-deb
           path: cmd/pos-merchant-app/dist/*.deb
-          if-no-files-found: error
-
-      - name: 📤 Upload Linux RPM
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-rpm
-          path: cmd/pos-merchant-app/dist/*.rpm
           if-no-files-found: error
 
   # 創建 Release（僅在打 tag 時執行）
@@ -311,7 +303,6 @@ jobs:
             artifacts/windows-ia32-installer/*.exe
             artifacts/linux-appimage/*.AppImage
             artifacts/linux-deb/*.deb
-            artifacts/linux-rpm/*.rpm
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -329,9 +320,8 @@ jobs:
             - **32-bit**: 下載 `*-ia32.exe`
             
             #### Linux
-            - **通用**: 下載 `*.AppImage`
+            - **通用**: 下載 `*.AppImage`（適用於所有 Linux 發行版）
             - **Debian/Ubuntu**: 下載 `*.deb`
-            - **Fedora/RedHat**: 下載 `*.rpm`
             
             ### 🔍 如何確認您的系統架構
             
