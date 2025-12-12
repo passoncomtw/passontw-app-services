@@ -1,13 +1,6 @@
 // 應用程式狀態類型定義
 export interface RootState {
-  counter: CounterState;
   app: AppState;
-}
-
-// Counter 狀態
-export interface CounterState {
-  value: number;
-  loading: boolean;
 }
 
 // App 狀態
@@ -18,6 +11,8 @@ export interface AppState {
   loading: boolean;
   error: string | null;
   isAuthenticated: boolean;
+  products: Product[];
+  productsLoading: boolean;
 }
 
 // 用戶類型
@@ -38,6 +33,8 @@ export interface Product {
   price: number;
   description: string;
   image?: string;
+  is_active?: boolean;
+  customizable?: boolean;
   customizations?: ProductCustomization[];
 }
 

@@ -1,6 +1,6 @@
 // POS 主頁面 - 遵循 SRP 原則，負責商品選擇和購物車管理
 
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   Box,
@@ -40,7 +40,8 @@ import {
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import { logout } from '../../reducers/appReducer'
-import { MOCK_PRODUCTS, formatCurrency } from '../../utils/mockData'
+import { fetchProductsRequest } from '../../actions'
+import { formatCurrency } from '../../utils/mockData'
 import type { Product, CartItem, RootState } from '../../types'
 
 /**
@@ -164,15 +165,25 @@ const POSPage: React.FC = () => {
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const navigate = useNavigate()
   const dispatch = useDispatch()
-  const user = useSelector((state: RootState) => state.app.user)
-  const isAuthenticated = useSelector((state: RootState) => state.app.isAuthenticated)
+  const { user, isAuthenticated, products, productsLoading } = useSelector(
+    (state: RootState) => state.app
+  )
+  const hasFetchedRef = useRef(false)
 
   // 檢查登入狀態
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login')
+      hasFetchedRef.current = false
+      return
     }
-  }, [isAuthenticated, navigate])
+
+    // 避免在 React 18 StrictMode 下重複觸發（只在首次掛載後觸發一次）
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true
+      dispatch(fetchProductsRequest())
+    }
+  }, [isAuthenticated, navigate, dispatch])
 
   // 處理登出
   const handleLogout = () => {
@@ -192,8 +203,8 @@ const POSPage: React.FC = () => {
 
   // 篩選商品
   const filteredProducts = useMemo(() => {
-    return MOCK_PRODUCTS.filter((product) => product.category === selectedCategory)
-  }, [selectedCategory])
+    return products.filter((product) => product.category === selectedCategory)
+  }, [products, selectedCategory])
 
   // 計算購物車總額
   const cartTotal = useMemo(() => {
@@ -353,13 +364,23 @@ const POSPage: React.FC = () => {
 
           {/* 商品網格 */}
           <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 2 }}>
-              {filteredProducts.map((product) => (
-                <Box key={product.id}>
-                  <ProductCard product={product} onAddToCart={handleAddToCart} />
-                </Box>
-              ))}
-            </Box>
+            {productsLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                <Typography color="text.secondary">商品載入中...</Typography>
+              </Box>
+            ) : filteredProducts.length === 0 ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                <Typography color="text.secondary">目前沒有商品</Typography>
+              </Box>
+            ) : (
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 2 }}>
+                {filteredProducts.map((product) => (
+                  <Box key={product.id}>
+                    <ProductCard product={product} onAddToCart={handleAddToCart} />
+                  </Box>
+                ))}
+              </Box>
+            )}
           </Box>
         </Box>
 

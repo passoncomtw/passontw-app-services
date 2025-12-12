@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { AppState, User } from '../types';
+import { AppState, User, Product } from '../types';
 
 const initialState: AppState = {
   theme: 'light',
@@ -8,6 +8,8 @@ const initialState: AppState = {
   loading: false,
   error: null,
   isAuthenticated: false,
+  products: [],
+  productsLoading: false,
 };
 
 const appSlice = createSlice({
@@ -40,6 +42,14 @@ const appSlice = createSlice({
       state.user = null;
       state.isAuthenticated = false;
       state.error = null;
+      state.products = [];
+      state.productsLoading = false;
+    },
+    setProducts: (state, action: PayloadAction<Product[]>) => {
+      state.products = action.payload;
+    },
+    setProductsLoading: (state, action: PayloadAction<boolean>) => {
+      state.productsLoading = action.payload;
     },
   },
 });
@@ -53,6 +63,8 @@ export const {
   setError,
   clearError,
   logout,
+  setProducts,
+  setProductsLoading,
 } = appSlice.actions;
 
 export default appSlice.reducer;

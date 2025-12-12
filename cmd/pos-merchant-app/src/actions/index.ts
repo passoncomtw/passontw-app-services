@@ -3,13 +3,15 @@ export const FETCH_USER_REQUEST = 'FETCH_USER_REQUEST';
 export const FETCH_USER_SUCCESS = 'FETCH_USER_SUCCESS';
 export const FETCH_USER_FAILURE = 'FETCH_USER_FAILURE';
 
-export const INCREMENT_ASYNC = 'INCREMENT_ASYNC';
-export const DECREMENT_ASYNC = 'DECREMENT_ASYNC';
-
 // Auth
 export const LOGIN_REQUEST = 'LOGIN_REQUEST';
 export const LOGIN_SUCCESS = 'LOGIN_SUCCESS';
 export const LOGIN_FAILURE = 'LOGIN_FAILURE';
+
+// Products
+export const FETCH_PRODUCTS_REQUEST = 'FETCH_PRODUCTS_REQUEST';
+export const FETCH_PRODUCTS_SUCCESS = 'FETCH_PRODUCTS_SUCCESS';
+export const FETCH_PRODUCTS_FAILURE = 'FETCH_PRODUCTS_FAILURE';
 
 // Action creators
 export const fetchUserRequest = (userId: string) => ({
@@ -27,14 +29,6 @@ export const fetchUserFailure = (error: string) => ({
   payload: { error },
 });
 
-export const incrementAsync = () => ({
-  type: INCREMENT_ASYNC,
-});
-
-export const decrementAsync = () => ({
-  type: DECREMENT_ASYNC,
-});
-
 export const loginRequest = (pin: string) => ({
   type: LOGIN_REQUEST,
   payload: { pin },
@@ -46,5 +40,20 @@ export const loginSuccess = () => ({
 
 export const loginFailure = (error: string) => ({
   type: LOGIN_FAILURE,
+  payload: { error },
+});
+
+// Product action creators
+export const fetchProductsRequest = () => ({
+  type: FETCH_PRODUCTS_REQUEST,
+});
+
+export const fetchProductsSuccess = (products: any[]) => ({
+  type: FETCH_PRODUCTS_SUCCESS,
+  payload: { products },
+});
+
+export const fetchProductsFailure = (error: string) => ({
+  type: FETCH_PRODUCTS_FAILURE,
   payload: { error },
 });

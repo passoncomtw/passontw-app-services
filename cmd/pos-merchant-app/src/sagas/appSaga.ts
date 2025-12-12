@@ -1,4 +1,5 @@
-import { call, put, takeEvery } from 'redux-saga/effects';
+import { call, put, takeLeading, takeLatest } from 'redux-saga/effects';
+import { SagaIterator } from 'redux-saga';
 import { PayloadAction } from '@reduxjs/toolkit';
 import { 
   FETCH_USER_REQUEST, 
@@ -13,7 +14,7 @@ import { userService } from '../services/userService';
 import { User } from '../types';
 import { authApi } from '../apis';
 
-function* fetchUserSaga(action: PayloadAction<{ userId: string }>) {
+function* fetchUserSaga(action: PayloadAction<{ userId: string }>): SagaIterator {
   try {
     yield put(setLoading(true));
     yield put(setError(null));
@@ -30,12 +31,14 @@ function* fetchUserSaga(action: PayloadAction<{ userId: string }>) {
   }
 }
 
-export function* appSaga() {
-  yield takeEvery(FETCH_USER_REQUEST, fetchUserSaga);
-  yield takeEvery(LOGIN_REQUEST, loginSaga);
+export function* appSaga(): SagaIterator {
+  // 取得用戶資料：取最新一次請求，避免舊請求覆蓋新資料
+  yield takeLatest(FETCH_USER_REQUEST, fetchUserSaga);
+  // 登入：只處理第一個，避免重複登入並發
+  yield takeLeading(LOGIN_REQUEST, loginSaga);
 }
 
-function* loginSaga(action: PayloadAction<{ pin: string }>) {
+function* loginSaga(action: PayloadAction<{ pin: string }>): SagaIterator {
   try {
     yield put(setLoading(true));
     yield put(setError(null));
