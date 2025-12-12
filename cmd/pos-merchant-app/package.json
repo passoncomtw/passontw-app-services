@@ -160,7 +160,6 @@
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "appImage": {
-      "license": "LICENSE"
     },
     "deb": {
       "depends": [
