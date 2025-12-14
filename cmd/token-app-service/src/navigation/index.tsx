@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Platform, ActivityIndicator, View, StyleSheet } from 'react-native';
 import { useAppSelector } from './store/hooks';
+import { setNavigationRef } from '../apis/httpClient';
 
 import WalletScreen from './screens/WalletScreen';
 import TradeScreen from './screens/TradeScreen';
@@ -167,7 +168,7 @@ export function Navigation(props: any) {
   // Early return: 驗證狀態載入中
   if (loading) {
     return (
-      <NavigationContainer {...props}>
+      <NavigationContainer {...props} ref={(ref) => setNavigationRef(ref)}>
         <LoadingScreen />
       </NavigationContainer>
     );
@@ -176,7 +177,7 @@ export function Navigation(props: any) {
   // Early return: 已驗證用戶
   if (isAuthenticated) {
     return (
-      <NavigationContainer {...props}>
+      <NavigationContainer {...props} ref={(ref) => setNavigationRef(ref)}>
         <AuthenticatedStack />
       </NavigationContainer>
     );
@@ -184,7 +185,7 @@ export function Navigation(props: any) {
 
   // 預設: 未驗證用戶
   return (
-    <NavigationContainer {...props}>
+    <NavigationContainer {...props} ref={(ref) => setNavigationRef(ref)}>
       <PublicStack />
     </NavigationContainer>
   );
