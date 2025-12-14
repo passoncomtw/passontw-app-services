@@ -1,5 +1,5 @@
 /**
- * CreateOrderBuyScreen - 購買e幣頁面
+ * CreateOrderBuyScreen - 購買掛單頁面
  */
 
 import React, { useState } from 'react';
@@ -18,7 +18,7 @@ import {
   TouchableOpacity,
   FlatList,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 
 // 帳戶類型
 interface PaymentAccount {
@@ -29,7 +29,7 @@ interface PaymentAccount {
   bankName?: string;
 }
 
-// 模擬帳戶資料
+// 模擬帳戶資料（之後會從 API 取得）
 const mockAccounts: PaymentAccount[] = [
   {
     id: '1',
@@ -45,52 +45,23 @@ const mockAccounts: PaymentAccount[] = [
     accountNumber: '6222 **** **** 5678',
     bankName: '工商銀行',
   },
-  {
-    id: '3',
-    type: 'alipay',
-    name: '王小明',
-    accountNumber: '138****8888',
-  },
-  {
-    id: '4',
-    type: 'wechat',
-    name: '王小明',
-    accountNumber: 'wxid_****abcd',
-  },
 ];
-
-type CreateOrderBuyRouteProp = RouteProp<{ 
-  CreateOrderBuy: { 
-    sellerName: string;
-    minAmount: number;
-    maxAmount: number;
-    price: number;
-    paymentMethod: string;
-    paymentTimeout: number;
-  } 
-}, 'CreateOrderBuy'>;
 
 export default function CreateOrderBuyScreen() {
   const navigation = useNavigation();
-  const route = useRoute<CreateOrderBuyRouteProp>();
   
-  // 從路由參數獲取交易資訊，如果沒有則使用預設值
-  const {
-    sellerName = '張三',
-    minAmount = 100,
-    maxAmount = 5000,
-    price = 1.00,
-    paymentMethod = '銀行卡',
-    paymentTimeout = 15,
-  } = route.params || {};
-
-  const [amount, setAmount] = useState('1000');
+  const [amount, setAmount] = useState('');
   const [selectedAccount, setSelectedAccount] = useState<PaymentAccount | null>(null);
+  const [isSplit, setIsSplit] = useState<boolean>(true);
+  const [minAmount, setMinAmount] = useState('');
+  const [paymentTimeout, setPaymentTimeout] = useState<number>(15);
   const [transactionPassword, setTransactionPassword] = useState('');
   const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showSplitModal, setShowSplitModal] = useState(false);
+  const [showTimeoutModal, setShowTimeoutModal] = useState(false);
 
-  // 計算交易金額
-  const totalPrice = parseFloat(amount || '0') * price;
+  // 計算交易金額（假設 1 E幣 = 1 CNY）
+  const totalPrice = parseFloat(amount || '0') * 1;
 
   const formatNumber = (num: number) => {
     return num.toLocaleString('zh-TW');
@@ -125,19 +96,42 @@ export default function CreateOrderBuyScreen() {
     setShowAccountModal(false);
   };
 
+  const handleSelectSplit = () => {
+    setShowSplitModal(true);
+  };
+
+  const handleSplitSelect = (value: boolean) => {
+    setIsSplit(value);
+    setShowSplitModal(false);
+  };
+
+  const handleSelectTimeout = () => {
+    setShowTimeoutModal(true);
+  };
+
+  const handleTimeoutSelect = (minutes: number) => {
+    setPaymentTimeout(minutes);
+    setShowTimeoutModal(false);
+  };
+
   const handleSubmit = () => {
     // 驗證
     const amountNum = parseFloat(amount);
-    if (!amount || isNaN(amountNum)) {
+    if (!amount || isNaN(amountNum) || amountNum <= 0) {
       Alert.alert('錯誤', '請輸入購買數量');
-      return;
-    }
-    if (amountNum < minAmount || amountNum > maxAmount) {
-      Alert.alert('錯誤', `數量必須在 ${formatNumber(minAmount)} - ${formatNumber(maxAmount)} 之間`);
       return;
     }
     if (!selectedAccount) {
       Alert.alert('錯誤', '請選擇付款帳戶');
+      return;
+    }
+    const minAmountNum = parseFloat(minAmount);
+    if (!minAmount || isNaN(minAmountNum) || minAmountNum <= 0) {
+      Alert.alert('錯誤', '請輸入最小交易量');
+      return;
+    }
+    if (minAmountNum > amountNum) {
+      Alert.alert('錯誤', '最小交易量不能大於購買數量');
       return;
     }
     if (!transactionPassword) {
@@ -145,26 +139,25 @@ export default function CreateOrderBuyScreen() {
       return;
     }
 
-    // 提交訂單後跳轉到確認頁面
-    Alert.alert('確認購買', `確定購買 ${formatNumber(amountNum)} E幣？`, [
+    // TODO: 透過 saga 調用 API 建立掛單
+    Alert.alert('確認購買', `確定建立購買掛單？`, [
       { text: '取消', style: 'cancel' },
       { text: '確定', onPress: () => {
-        // 生成訂單編號
-        const orderNumber = `${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${new Date().getDate().toString().padStart(2, '0')}${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
-        
-        navigation.navigate('ConfirmOrderBuy', {
-          orderNumber,
+        // TODO: 實作建立掛單 API
+        console.log('建立購買掛單', {
           amount: amountNum,
-          totalPrice,
-          sellerName,
+          minAmount: minAmountNum,
+          isSplit,
           paymentTimeout,
-          bankName: '中國銀行',
-          bankAccount: '6217 **** **** 1234',
-          accountHolder: sellerName,
+          bankcardId: selectedAccount.id,
         });
+        // 建立成功後返回上一頁
+        navigation.goBack();
       }},
     ]);
   };
+
+  const timeoutOptions = [15, 30, 45, 60];
 
   return (
     <View style={styles.container}>
@@ -179,7 +172,7 @@ export default function CreateOrderBuyScreen() {
         >
           <Text style={styles.backButtonText}>‹</Text>
         </Pressable>
-        <Text style={styles.topBarTitle}>購買e幣</Text>
+        <Text style={styles.topBarTitle}>掛單/購買</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -194,24 +187,21 @@ export default function CreateOrderBuyScreen() {
         >
           {/* 主要表單區域 */}
           <View style={styles.section}>
-            {/* 可交易數量提示 */}
-            <View style={styles.infoBox}>
-              <Text style={styles.infoText}>
-                可交易數量: <Text style={styles.infoTextBold}>{formatNumber(minAmount)} - {formatNumber(maxAmount)}</Text>
-              </Text>
-            </View>
-
             {/* 數量輸入 */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>數量</Text>
-              <View style={styles.inputField}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="請輸入購買數量"
-                  value={amount}
-                  onChangeText={setAmount}
-                  keyboardType="numeric"
-                />
+              <View style={styles.inputRow}>
+                <View style={styles.inputField}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="請輸入購買數量"
+                    placeholderTextColor="#999"
+                    value={amount}
+                    onChangeText={setAmount}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <Text style={styles.unitText}>E幣</Text>
               </View>
             </View>
 
@@ -255,6 +245,57 @@ export default function CreateOrderBuyScreen() {
               </Text>
             </View>
 
+            {/* 是否拆單 */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>是否拆單</Text>
+              <Pressable 
+                style={({ pressed }) => [
+                  styles.selectField,
+                  pressed && styles.selectFieldPressed,
+                ]}
+                onPress={handleSelectSplit}
+              >
+                <Text style={styles.selectText}>{isSplit ? '是' : '否'}</Text>
+                <Text style={styles.selectArrow}>›</Text>
+              </Pressable>
+              <Text style={styles.hint}>
+                當訂單數量較大時，拆單掛單會加速完成交易
+              </Text>
+            </View>
+
+            {/* 最小交易量 */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>最小交易量</Text>
+              <View style={styles.inputField}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="請輸入最小交易量"
+                  placeholderTextColor="#999"
+                  value={minAmount}
+                  onChangeText={setMinAmount}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+
+            {/* 支付時效 */}
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>支付時效</Text>
+                <Text style={styles.infoIcon}>ⓘ</Text>
+              </View>
+              <Pressable 
+                style={({ pressed }) => [
+                  styles.selectField,
+                  pressed && styles.selectFieldPressed,
+                ]}
+                onPress={handleSelectTimeout}
+              >
+                <Text style={styles.selectText}>{paymentTimeout} 分鐘</Text>
+                <Text style={styles.selectArrow}>›</Text>
+              </Pressable>
+            </View>
+
             {/* 交易密碼 */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>交易密碼</Text>
@@ -262,11 +303,17 @@ export default function CreateOrderBuyScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="請輸入交易密碼"
+                  placeholderTextColor="#999"
                   value={transactionPassword}
                   onChangeText={setTransactionPassword}
                   secureTextEntry
                 />
               </View>
+            </View>
+
+            {/* 提示訊息 */}
+            <View style={styles.warningBox}>
+              <Text style={styles.warningText}>掛單時，請務必在線</Text>
             </View>
 
             {/* 購買按鈕 */}
@@ -277,25 +324,8 @@ export default function CreateOrderBuyScreen() {
               ]}
               onPress={handleSubmit}
             >
-              <Text style={styles.submitButtonText}>購買e幣</Text>
+              <Text style={styles.submitButtonText}>購買E幣</Text>
             </Pressable>
-          </View>
-
-          {/* 交易資訊區域 */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>交易資訊</Text>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>付款期限</Text>
-              <Text style={styles.rowValue}>{paymentTimeout} 分鐘</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>賣家暱稱</Text>
-              <Text style={styles.rowValue}>{sellerName}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>收付方式</Text>
-              <Text style={styles.rowValue}>{paymentMethod}</Text>
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -350,6 +380,79 @@ export default function CreateOrderBuyScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* 拆單選擇 Modal */}
+      <Modal
+        visible={showSplitModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSplitModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>是否拆單</Text>
+              <TouchableOpacity 
+                onPress={() => setShowSplitModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={[styles.optionItem, isSplit && styles.optionItemSelected]}
+              onPress={() => handleSplitSelect(true)}
+            >
+              <Text style={[styles.optionText, isSplit && styles.optionTextSelected]}>是</Text>
+              {isSplit && <Text style={styles.optionCheckmark}>✓</Text>}
+            </TouchableOpacity>
+            <View style={styles.optionSeparator} />
+            <TouchableOpacity
+              style={[styles.optionItem, !isSplit && styles.optionItemSelected]}
+              onPress={() => handleSplitSelect(false)}
+            >
+              <Text style={[styles.optionText, !isSplit && styles.optionTextSelected]}>否</Text>
+              {!isSplit && <Text style={styles.optionCheckmark}>✓</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 支付時效選擇 Modal */}
+      <Modal
+        visible={showTimeoutModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowTimeoutModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>支付時效</Text>
+              <TouchableOpacity 
+                onPress={() => setShowTimeoutModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            {timeoutOptions.map((minutes, index) => (
+              <React.Fragment key={minutes}>
+                {index > 0 && <View style={styles.optionSeparator} />}
+                <TouchableOpacity
+                  style={[styles.optionItem, paymentTimeout === minutes && styles.optionItemSelected]}
+                  onPress={() => handleTimeoutSelect(minutes)}
+                >
+                  <Text style={[styles.optionText, paymentTimeout === minutes && styles.optionTextSelected]}>
+                    {minutes} 分鐘
+                  </Text>
+                  {paymentTimeout === minutes && <Text style={styles.optionCheckmark}>✓</Text>}
+                </TouchableOpacity>
+              </React.Fragment>
+            ))}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -365,7 +468,7 @@ const styles = StyleSheet.create({
   topBar: {
     backgroundColor: '#fff',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingTop: 60,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
@@ -398,23 +501,10 @@ const styles = StyleSheet.create({
   section: {
     backgroundColor: '#fff',
     padding: 16,
-    marginBottom: 12,
-  },
-  infoBox: {
-    backgroundColor: '#E3F2FD',
-    padding: 12,
-    borderRadius: 4,
-    marginBottom: 16,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#1976D2',
-  },
-  infoTextBold: {
-    fontWeight: 'bold',
+    marginTop: 12,
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   label: {
     fontSize: 14,
@@ -422,36 +512,51 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontWeight: '500',
   },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  infoIcon: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 4,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   inputField: {
     backgroundColor: '#F5F5F5',
     borderRadius: 4,
     height: 48,
     justifyContent: 'center',
     paddingHorizontal: 12,
+    flex: 1,
   },
   input: {
     fontSize: 16,
     color: '#333',
   },
+  unitText: {
+    fontSize: 14,
+    color: '#999',
+    marginLeft: 12,
+  },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   rowLabel: {
     fontSize: 14,
-    color: '#999',
-  },
-  rowValue: {
-    fontSize: 14,
     color: '#333',
-    fontWeight: '500',
   },
   priceText: {
     fontSize: 16,
-    color: '#E9967A',
-    fontWeight: 'bold',
+    color: '#333',
+    fontWeight: '500',
   },
   selectField: {
     backgroundColor: '#fff',
@@ -462,6 +567,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
+    justifyContent: 'space-between',
   },
   selectFieldPressed: {
     backgroundColor: '#F8F8F8',
@@ -469,15 +575,13 @@ const styles = StyleSheet.create({
   selectText: {
     fontSize: 16,
     color: '#333',
-    flex: 1,
   },
   selectPlaceholder: {
     fontSize: 16,
     color: '#999',
-    flex: 1,
   },
   selectArrow: {
-    fontSize: 24,
+    fontSize: 20,
     color: '#CCC',
   },
   hint: {
@@ -486,12 +590,21 @@ const styles = StyleSheet.create({
     marginTop: 8,
     lineHeight: 18,
   },
+  warningBox: {
+    backgroundColor: '#FFF3E0',
+    padding: 12,
+    borderRadius: 4,
+    marginBottom: 20,
+  },
+  warningText: {
+    fontSize: 14,
+    color: '#FF9800',
+  },
   submitButton: {
     backgroundColor: '#007AFF',
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 8,
   },
   submitButtonPressed: {
     opacity: 0.9,
@@ -500,12 +613,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 16,
   },
   // 選中帳戶樣式
   selectedAccountInfo: {
@@ -609,5 +716,31 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#F0F0F0',
   },
+  // 選項樣式
+  optionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+  },
+  optionItemSelected: {
+    backgroundColor: '#E3F2FD',
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  optionTextSelected: {
+    color: '#007AFF',
+    fontWeight: '500',
+  },
+  optionCheckmark: {
+    fontSize: 20,
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
+  optionSeparator: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+  },
 });
-

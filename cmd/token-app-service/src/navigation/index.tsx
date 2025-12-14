@@ -203,22 +203,8 @@ const styles = StyleSheet.create({
 // 型別定義
 type RootStackParamList = {
   HomeTabs: undefined;
-  CreateOrderBuy: {
-    sellerName: string;
-    minAmount: number;
-    maxAmount: number;
-    price: number;
-    paymentMethod: string;
-    paymentTimeout: number;
-  };
-  CreateOrderSell: {
-    buyerName: string;
-    minAmount: number;
-    maxAmount: number;
-    price: number;
-    paymentMethod: string;
-    paymentTimeout: number;
-  };
+  CreateOrderBuy: undefined;
+  CreateOrderSell: undefined;
   ConfirmOrderBuy: {
     orderNumber: string;
     amount: number;

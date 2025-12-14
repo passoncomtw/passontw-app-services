@@ -4,7 +4,7 @@
 
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, StatusBar, Alert, ActivityIndicator } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchPendingOrdersRequest } from '../../store/actions/ordersActions';
 import EmptyState from './components/EmptyState';
@@ -28,6 +28,7 @@ function mapApiOrderToComponentOrder(apiOrder: ApiPendingOrder, type: 'buy' | 's
 }
 
 export default function OrdersScreen() {
+  const navigation = useNavigation();
   const dispatch = useAppDispatch();
   const { buy, sell, loading, error } = useAppSelector((state) => state.orders);
 
@@ -60,8 +61,36 @@ export default function OrdersScreen() {
       Alert.alert('提示', '您已有買入和賣出掛單，無法新增更多');
       return;
     }
-    // TODO: 導航到新增掛單頁面
-    console.log('新增掛單');
+
+    // 顯示選擇買幣或賣幣的對話框
+    const options: any[] = [];
+    
+    if (canAddBuy) {
+      options.push({
+        text: '買幣',
+        onPress: () => {
+          // 導航到購買掛單頁面
+          (navigation as any).push('CreateOrderBuy');
+        },
+      });
+    }
+    
+    if (canAddSell) {
+      options.push({
+        text: '賣幣',
+        onPress: () => {
+          // 導航到出售掛單頁面
+          (navigation as any).push('CreateOrderSell');
+        },
+      });
+    }
+
+    options.push({
+      text: '取消',
+      style: 'cancel',
+    });
+
+    Alert.alert('選擇掛單類型', '請選擇要建立的掛單類型', options);
   };
 
   const handleLockToggle = (orderId: string, currentStatus: 'active' | 'locked') => {

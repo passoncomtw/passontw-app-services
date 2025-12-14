@@ -28,31 +28,31 @@ function* loginSaga(action: PayloadAction<LoginCredentials>) {
     // 使用 httpClient 呼叫登入 API
     const data: LoginData = yield call(authApi.login, action.payload);
 
-    logger.info('登入成功', {
-      userId: data.user.id,
-      userName: data.user.name,
-      account: data.user.account,
-    });
+      logger.info('登入成功', {
+        userId: data.user.id,
+        userName: data.user.name,
+        account: data.user.account,
+      });
 
     // 儲存 token 到 AsyncStorage
-    if (data.access_token) {
+      if (data.access_token) {
       yield call([AsyncStorage, 'setItem'], 'authToken', data.access_token);
       yield call([AsyncStorage, 'setItem'], 'expireIn', data.expireIn.toString());
       yield call([AsyncStorage, 'setItem'], 'user', JSON.stringify(data.user));
-    }
+      }
 
-    // Dispatch loginSuccess（更新 Redux State）
-    yield put(loginSuccess({
-      user: data.user,
-      accessToken: data.access_token,
-      expireIn: data.expireIn,
-    }));
+      // Dispatch loginSuccess（更新 Redux State）
+      yield put(loginSuccess({
+        user: data.user,
+        accessToken: data.access_token,
+        expireIn: data.expireIn,
+      }));
   } catch (error: any) {
-    logger.error('登入失敗', {
+      logger.error('登入失敗', {
       error: error.message || error,
-    });
+      });
 
-    // Dispatch loginFailure（設置錯誤訊息）
+      // Dispatch loginFailure（設置錯誤訊息）
     const errorMessage = error.response?.data?.message || error.message || '登入失敗，請稍後再試';
     yield put(loginFailure(errorMessage));
   }
@@ -71,20 +71,20 @@ function* registerSaga(action: PayloadAction<RegisterCredentials>) {
     // 使用 httpClient 呼叫註冊 API
     const data: RegisterData = yield call(authApi.register, action.payload);
 
-    logger.info('註冊成功', {
-      userId: data.id,
-      userName: data.name,
-      account: data.account,
-    });
+      logger.info('註冊成功', {
+        userId: data.id,
+        userName: data.name,
+        account: data.account,
+      });
 
-    // 清除 loading 狀態並標記註冊成功
-    yield put(registerSuccess());
+      // 清除 loading 狀態並標記註冊成功
+      yield put(registerSuccess());
   } catch (error: any) {
-    logger.error('註冊失敗', {
+      logger.error('註冊失敗', {
       error: error.message || error,
-    });
+      });
 
-    // Dispatch loginFailure（設置錯誤訊息）
+      // Dispatch loginFailure（設置錯誤訊息）
     const errorMessage = error.response?.data?.message || error.message || '註冊失敗，請稍後再試';
     yield put(loginFailure(errorMessage));
   }
@@ -100,7 +100,7 @@ function* logoutSaga() {
   try {
     // 使用 httpClient 呼叫登出 API
     yield call(authApi.logout);
-    logger.info('登出 API 呼叫成功');
+      logger.info('登出 API 呼叫成功');
   } catch (error: any) {
     logger.error('登出 API 呼叫失敗', error);
     // 即使 API 失敗，也要清除本地數據並登出
@@ -108,11 +108,11 @@ function* logoutSaga() {
     // 清除 AsyncStorage
     yield call([AsyncStorage, 'multiRemove'], ['authToken', 'expireIn', 'user']);
 
-    // 延遲一下讓使用者看到登出動畫
-    yield delay(300);
-    
-    // Dispatch logout（清除 Redux State）
-    yield put(logout());
+      // 延遲一下讓使用者看到登出動畫
+      yield delay(300);
+      
+      // Dispatch logout（清除 Redux State）
+      yield put(logout());
   }
 }
 
