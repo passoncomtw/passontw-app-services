@@ -2,42 +2,57 @@
  * OrdersScreen - 掛單頁面
  */
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, StatusBar, Alert, ScrollView } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, Pressable, StatusBar, Alert, ActivityIndicator } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchPendingOrdersRequest } from '../../store/actions/ordersActions';
 import EmptyState from './components/EmptyState';
 import OrdersList, { PendingOrder } from './components/OrdersList';
+import type { PendingOrder as ApiPendingOrder } from '@/apis/ordersApi';
 
-// 模擬掛單資料
-const mockOrders: PendingOrder[] = [
-  {
-    id: '1',
-    type: 'buy',
-    status: 'active',
-    amount: 5000,
-    totalPrice: 5000,
-    minAmount: 100,
-    paymentTimeout: 15,
-    createdAt: '剛剛',
-  },
-  {
-    id: '2',
-    type: 'sell',
-    status: 'locked',
-    amount: 3000,
-    totalPrice: 3000,
-    minAmount: 200,
-    paymentTimeout: 20,
-    createdAt: '2023-11-25 09:30',
-  },
-];
+/**
+ * 將 API 返回的掛單資料轉換為組件需要的格式
+ */
+function mapApiOrderToComponentOrder(apiOrder: ApiPendingOrder, type: 'buy' | 'sell'): PendingOrder {
+  return {
+    id: apiOrder.id,
+    type,
+    status: apiOrder.status === 0 ? 'active' : 'locked',
+    amount: apiOrder.amount,
+    totalPrice: apiOrder.balance, // 使用 balance 作為總價
+    minAmount: apiOrder.minAmount,
+    paymentTimeout: apiOrder.transactionMinutes,
+    createdAt: apiOrder.createdAt || new Date().toISOString(),
+  };
+}
 
 export default function OrdersScreen() {
-  const [orders, setOrders] = useState<PendingOrder[]>(mockOrders);
-  const [showSuccessAlert] = useState(false); // 預設不顯示成功訊息
+  const dispatch = useAppDispatch();
+  const { buy, sell, loading, error } = useAppSelector((state) => state.orders);
+
+  // 將 buy 和 sell 轉換為組件格式的陣列
+  const orders = useMemo(() => {
+    const result: PendingOrder[] = [];
+    if (buy) {
+      result.push(mapApiOrderToComponentOrder(buy, 'buy'));
+    }
+    if (sell) {
+      result.push(mapApiOrderToComponentOrder(sell, 'sell'));
+    }
+    return result;
+  }, [buy, sell]);
+
+  // 當頁面獲得焦點時，重新取得掛單列表
+  useFocusEffect(
+    React.useCallback(() => {
+      dispatch(fetchPendingOrdersRequest());
+    }, [dispatch])
+  );
 
   // 檢查是否可以新增掛單（最多一買一賣）
-  const canAddBuy = !orders.some(o => o.type === 'buy');
-  const canAddSell = !orders.some(o => o.type === 'sell');
+  const canAddBuy = !buy;
+  const canAddSell = !sell;
   const canAddOrder = canAddBuy || canAddSell;
 
   const handleCreateOrder = () => {
@@ -50,11 +65,10 @@ export default function OrdersScreen() {
   };
 
   const handleLockToggle = (orderId: string, currentStatus: 'active' | 'locked') => {
-    const newStatus = currentStatus === 'active' ? 'locked' : 'active';
-    setOrders(orders.map(o => 
-      o.id === orderId ? { ...o, status: newStatus } : o
-    ));
-    Alert.alert('提示', newStatus === 'locked' ? '已鎖定掛單' : '已解除鎖定');
+    // TODO: 實作鎖定/解鎖 API 調用
+    Alert.alert('提示', currentStatus === 'active' ? '已鎖定掛單' : '已解除鎖定');
+    // 重新取得掛單列表
+    dispatch(fetchPendingOrdersRequest());
   };
 
   const handleStart = (orderId: string) => {
@@ -71,14 +85,18 @@ export default function OrdersScreen() {
         {
           text: '刪除',
           style: 'destructive',
-          onPress: () => setOrders(orders.filter(o => o.id !== orderId)),
+          onPress: () => {
+            // TODO: 實作刪除 API 調用
+            // 重新取得掛單列表
+            dispatch(fetchPendingOrdersRequest());
+          },
         },
       ]
     );
   };
 
   // 判斷是否為空狀態
-  const isEmpty = orders.length === 0;
+  const isEmpty = !loading && orders.length === 0;
 
   return (
     <View style={styles.container}>
@@ -92,17 +110,40 @@ export default function OrdersScreen() {
         </Pressable>
       </View>
 
+      {/* 載入中狀態 */}
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>載入中...</Text>
+        </View>
+      )}
+
+      {/* 錯誤訊息 */}
+      {error && !loading && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable
+            style={styles.retryButton}
+            onPress={() => dispatch(fetchPendingOrdersRequest())}
+          >
+            <Text style={styles.retryButtonText}>重試</Text>
+          </Pressable>
+        </View>
+      )}
+
       {/* 根據是否有掛單顯示對應組件 */}
-      {isEmpty ? (
-        <EmptyState onCreateOrder={handleCreateOrder} />
-      ) : (
-        <OrdersList
-          orders={orders}
-          showSuccessAlert={showSuccessAlert}
-          onLockToggle={handleLockToggle}
-          onStart={handleStart}
-          onDelete={handleDelete}
-        />
+      {!loading && !error && (
+        isEmpty ? (
+          <EmptyState onCreateOrder={handleCreateOrder} />
+        ) : (
+          <OrdersList
+            orders={orders}
+            showSuccessAlert={false}
+            onLockToggle={handleLockToggle}
+            onStart={handleStart}
+            onDelete={handleDelete}
+          />
+        )
       )}
     </View>
   );
@@ -136,5 +177,35 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#007AFF',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+  },
+  errorContainer: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#F44336',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    backgroundColor: '#007AFF',
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
 });
-

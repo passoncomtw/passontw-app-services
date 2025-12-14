@@ -4,6 +4,7 @@ import devToolsEnhancer from 'redux-devtools-expo-dev-plugin';
 import { persistStore, persistReducer } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import authReducer from './slices/authSlices';
+import ordersReducer from './slices/ordersSlice';
 import rootSaga from './sagas';
 
 /**
@@ -11,6 +12,7 @@ import rootSaga from './sagas';
  */
 const rootReducer = combineReducers({
   auth: authReducer,
+  orders: ordersReducer,
 });
 
 /**
