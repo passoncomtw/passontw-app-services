@@ -1,0 +1,20 @@
+{
+  "name": "passontw-app-services",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PassonTW App Services Monorepo",
+  "workspaces": [
+    "cmd/token-app-service",
+    "cmd/pos-merchant-app"
+  ],
+  "scripts": {
+    "token-app": "cd cmd/token-app-service && yarn start",
+    "pos-app": "cd cmd/pos-merchant-app && yarn dev"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "redux-saga": "^1.4.2",
+    "typescript": "^5.9.2"
+  }
+}
+
