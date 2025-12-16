@@ -70,7 +70,7 @@ export default function OrdersScreen() {
         text: '買幣',
         onPress: () => {
           // 導航到購買掛單頁面
-          (navigation as any).push('CreateOrderBuy');
+          (navigation as any).push('CreateOrderBuy', { type: 'buy' });
         },
       });
     }
@@ -80,7 +80,7 @@ export default function OrdersScreen() {
         text: '賣幣',
         onPress: () => {
           // 導航到出售掛單頁面
-          (navigation as any).push('CreateOrderSell');
+          (navigation as any).push('CreateOrderSell', { type: 'sell' });
         },
       });
     }
@@ -163,15 +163,15 @@ export default function OrdersScreen() {
       {/* 根據是否有掛單顯示對應組件 */}
       {!loading && !error && (
         isEmpty ? (
-          <EmptyState onCreateOrder={handleCreateOrder} />
-        ) : (
-          <OrdersList
-            orders={orders}
+        <EmptyState onCreateOrder={handleCreateOrder} />
+      ) : (
+        <OrdersList
+          orders={orders}
             showSuccessAlert={false}
-            onLockToggle={handleLockToggle}
-            onStart={handleStart}
-            onDelete={handleDelete}
-          />
+          onLockToggle={handleLockToggle}
+          onStart={handleStart}
+          onDelete={handleDelete}
+        />
         )
       )}
     </View>

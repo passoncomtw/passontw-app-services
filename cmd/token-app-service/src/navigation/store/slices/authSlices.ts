@@ -11,6 +11,17 @@ interface UserWallet {
 }
 
 /**
+ * 推薦人資訊
+ */
+interface ReferralUser {
+  id: number;
+  account: string;
+  email: string;
+  name: string;
+  type: number;
+}
+
+/**
  * 用戶資訊
  */
 interface User {
@@ -21,6 +32,7 @@ interface User {
   email: string;
   createAt: string;
   referralCode: string;
+  referralUser?: ReferralUser;
   wallet: UserWallet;
 }
 
@@ -77,6 +89,9 @@ const authSlice = createSlice({
     clearError(state) {
       state.error = null;
     },
+    updateUser(state, action: PayloadAction<User>) {
+      state.user = action.payload;
+    },
     logout(state) {
       state.isAuthenticated = false;
       state.user = null;
@@ -87,6 +102,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout, registerSuccess, clearError } = authSlice.actions;
+export const { loginStart, loginSuccess, loginFailure, logout, registerSuccess, clearError, updateUser } = authSlice.actions;
 
 export default authSlice.reducer;

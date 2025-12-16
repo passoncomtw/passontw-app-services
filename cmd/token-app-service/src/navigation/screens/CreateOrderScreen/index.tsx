@@ -1,8 +1,9 @@
 /**
- * CreateOrderBuyScreen - 購買掛單頁面
+ * CreateOrderScreen - 建立掛單頁面（共用組件）
+ * 支援買幣和賣幣兩種模式
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -18,7 +19,9 @@ import {
   TouchableOpacity,
   FlatList,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchBankCardsRequest } from '../../store/actions/bankCardsActions';
 
 // 帳戶類型
 interface PaymentAccount {
@@ -29,26 +32,40 @@ interface PaymentAccount {
   bankName?: string;
 }
 
-// 模擬帳戶資料（之後會從 API 取得）
-const mockAccounts: PaymentAccount[] = [
-  {
-    id: '1',
-    type: 'bank',
-    name: '王小明',
-    accountNumber: '6217 **** **** 1234',
-    bankName: '中國銀行',
-  },
-  {
-    id: '2',
-    type: 'bank',
-    name: '王小明',
-    accountNumber: '6222 **** **** 5678',
-    bankName: '工商銀行',
-  },
-];
+type CreateOrderRouteProp = RouteProp<{ 
+  CreateOrderBuy: { type: 'buy' };
+  CreateOrderSell: { type: 'sell' };
+}, 'CreateOrderBuy' | 'CreateOrderSell'>;
 
-export default function CreateOrderBuyScreen() {
+export default function CreateOrderScreen() {
   const navigation = useNavigation();
+  const route = useRoute<CreateOrderRouteProp>();
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
+  const { cards: bankCards, loading: bankCardsLoading } = useAppSelector((state) => state.bankCards);
+  
+  // 從路由名稱判斷是買幣還是賣幣
+  const routeName = route.name;
+  const isBuy = routeName === 'CreateOrderBuy';
+  
+  // 從用戶資料獲取可用餘額（賣幣時使用）
+  const availableBalance = user?.wallet?.usefulBalance || 0;
+
+  // 當頁面聚焦時，取得銀行卡列表
+  useFocusEffect(
+    React.useCallback(() => {
+      dispatch(fetchBankCardsRequest());
+    }, [dispatch])
+  );
+
+  // 將銀行卡資料轉換為 PaymentAccount 格式
+  const paymentAccounts: PaymentAccount[] = bankCards.map((card) => ({
+    id: String(card.id),
+    type: 'bank' as const,
+    name: card.name,
+    accountNumber: card.cardNumber,
+    bankName: card.bank.bankName,
+  }));
   
   const [amount, setAmount] = useState('');
   const [selectedAccount, setSelectedAccount] = useState<PaymentAccount | null>(null);
@@ -59,12 +76,35 @@ export default function CreateOrderBuyScreen() {
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [showTimeoutModal, setShowTimeoutModal] = useState(false);
+  const [amountError, setAmountError] = useState<string>('');
 
   // 計算交易金額（假設 1 E幣 = 1 CNY）
   const totalPrice = parseFloat(amount || '0') * 1;
 
   const formatNumber = (num: number) => {
     return num.toLocaleString('zh-TW');
+  };
+
+  // 處理數量輸入變化
+  const handleAmountChange = (value: string) => {
+    setAmount(value);
+    setAmountError('');
+    
+    // 賣幣時驗證數量不能超過可用餘額
+    if (!isBuy && value) {
+      const amountNum = parseFloat(value);
+      if (!isNaN(amountNum) && amountNum > availableBalance) {
+        setAmountError('數量不可超過E幣可用餘額');
+      }
+    }
+  };
+
+  // 點擊「全部」按鈕（僅賣幣時顯示）
+  const handleSelectAll = () => {
+    if (!isBuy) {
+      setAmount(formatNumber(availableBalance).replace(/,/g, ''));
+      setAmountError('');
+    }
   };
 
   // 取得帳戶類型圖標
@@ -118,33 +158,44 @@ export default function CreateOrderBuyScreen() {
     // 驗證
     const amountNum = parseFloat(amount);
     if (!amount || isNaN(amountNum) || amountNum <= 0) {
-      Alert.alert('錯誤', '請輸入購買數量');
+      Alert.alert('錯誤', `請輸入${isBuy ? '購買' : '出售'}數量`);
       return;
     }
+    
+    // 賣幣時驗證數量不能超過可用餘額
+    if (!isBuy && amountNum > availableBalance) {
+      Alert.alert('錯誤', '數量不可超過E幣可用餘額');
+      return;
+    }
+    
     if (!selectedAccount) {
-      Alert.alert('錯誤', '請選擇付款帳戶');
+      Alert.alert('錯誤', `請選擇${isBuy ? '付款' : '收款'}帳戶`);
       return;
     }
+    
     const minAmountNum = parseFloat(minAmount);
     if (!minAmount || isNaN(minAmountNum) || minAmountNum <= 0) {
       Alert.alert('錯誤', '請輸入最小交易量');
       return;
     }
+    
     if (minAmountNum > amountNum) {
-      Alert.alert('錯誤', '最小交易量不能大於購買數量');
+      Alert.alert('錯誤', '最小交易量不能大於交易數量');
       return;
     }
+    
     if (!transactionPassword) {
       Alert.alert('錯誤', '請輸入交易密碼');
       return;
     }
 
     // TODO: 透過 saga 調用 API 建立掛單
-    Alert.alert('確認購買', `確定建立購買掛單？`, [
+    Alert.alert('確認', `確定建立${isBuy ? '購買' : '出售'}掛單？`, [
       { text: '取消', style: 'cancel' },
       { text: '確定', onPress: () => {
         // TODO: 實作建立掛單 API
-        console.log('建立購買掛單', {
+        console.log(`建立${isBuy ? '購買' : '出售'}掛單`, {
+          type: isBuy ? 0 : 1,
           amount: amountNum,
           minAmount: minAmountNum,
           isSplit,
@@ -172,7 +223,9 @@ export default function CreateOrderBuyScreen() {
         >
           <Text style={styles.backButtonText}>‹</Text>
         </Pressable>
-        <Text style={styles.topBarTitle}>掛單/購買</Text>
+        <Text style={styles.topBarTitle}>
+          {isBuy ? '掛單/購買' : '掛單/出售'}
+        </Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -191,18 +244,37 @@ export default function CreateOrderBuyScreen() {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>數量</Text>
               <View style={styles.inputRow}>
-                <View style={styles.inputField}>
+                <View style={[
+                  styles.inputField,
+                  amountError && styles.inputFieldError,
+                ]}>
                   <TextInput
                     style={styles.input}
-                    placeholder="請輸入購買數量"
+                    placeholder={`請輸入${isBuy ? '購買' : '出售'}數量`}
                     placeholderTextColor="#999"
                     value={amount}
-                    onChangeText={setAmount}
+                    onChangeText={handleAmountChange}
                     keyboardType="numeric"
                   />
                 </View>
                 <Text style={styles.unitText}>E幣</Text>
+                {!isBuy && (
+                  <Pressable 
+                    style={styles.allButton}
+                    onPress={handleSelectAll}
+                  >
+                    <Text style={styles.allButtonText}>全部</Text>
+                  </Pressable>
+                )}
               </View>
+              {amountError && (
+                <Text style={styles.errorText}>{amountError}</Text>
+              )}
+              {!isBuy && (
+                <Text style={styles.balanceText}>
+                  E幣可用餘額 {formatNumber(availableBalance)}
+                </Text>
+              )}
             </View>
 
             {/* 交易金額 */}
@@ -236,12 +308,16 @@ export default function CreateOrderBuyScreen() {
                     </View>
                   </View>
                 ) : (
-                  <Text style={styles.selectPlaceholder}>請選擇付款帳戶</Text>
+                  <Text style={styles.selectPlaceholder}>
+                    {isBuy ? '請選擇付款帳戶' : '請選擇收款帳戶'}
+                  </Text>
                 )}
                 <Text style={styles.selectArrow}>›</Text>
               </Pressable>
               <Text style={styles.hint}>
-                賣方將以您提供的交易帳戶進行到賬確認，請務必以選擇的交易帳戶進行支付，否則不予以放行
+                {isBuy 
+                  ? '賣方將以您提供的交易帳戶進行到賬確認，請務必以選擇的交易帳戶進行支付，否則不予以放行'
+                  : '買方將以您提供的交易帳戶進行打款'}
               </Text>
             </View>
 
@@ -316,7 +392,7 @@ export default function CreateOrderBuyScreen() {
               <Text style={styles.warningText}>掛單時，請務必在線</Text>
             </View>
 
-            {/* 購買按鈕 */}
+            {/* 提交按鈕 */}
             <Pressable 
               style={({ pressed }) => [
                 styles.submitButton,
@@ -324,7 +400,9 @@ export default function CreateOrderBuyScreen() {
               ]}
               onPress={handleSubmit}
             >
-              <Text style={styles.submitButtonText}>購買E幣</Text>
+              <Text style={styles.submitButtonText}>
+                {isBuy ? '購買E幣' : '出售E幣'}
+              </Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -340,7 +418,9 @@ export default function CreateOrderBuyScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>選擇付款帳戶</Text>
+              <Text style={styles.modalTitle}>
+                {isBuy ? '選擇付款帳戶' : '選擇收款帳戶'}
+              </Text>
               <TouchableOpacity 
                 onPress={() => setShowAccountModal(false)}
                 style={styles.modalCloseButton}
@@ -348,35 +428,46 @@ export default function CreateOrderBuyScreen() {
                 <Text style={styles.modalCloseText}>✕</Text>
               </TouchableOpacity>
             </View>
-            <FlatList
-              data={mockAccounts}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.accountItem,
-                    selectedAccount?.id === item.id && styles.accountItemSelected,
-                  ]}
-                  onPress={() => handleAccountSelect(item)}
-                >
-                  <Text style={styles.accountIcon}>
-                    {getAccountTypeIcon(item.type)}
-                  </Text>
-                  <View style={styles.accountInfo}>
-                    <Text style={styles.accountType}>
-                      {item.bankName || getAccountTypeName(item.type)}
+            {bankCardsLoading ? (
+              <View style={styles.modalLoading}>
+                <Text style={styles.modalLoadingText}>載入中...</Text>
+              </View>
+            ) : paymentAccounts.length === 0 ? (
+              <View style={styles.modalEmpty}>
+                <Text style={styles.modalEmptyText}>尚未添加銀行卡</Text>
+                <Text style={styles.modalEmptyHint}>請先到個人設定中添加銀行卡</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={paymentAccounts}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.accountItem,
+                      selectedAccount?.id === item.id && styles.accountItemSelected,
+                    ]}
+                    onPress={() => handleAccountSelect(item)}
+                  >
+                    <Text style={styles.accountIcon}>
+                      {getAccountTypeIcon(item.type)}
                     </Text>
-                    <Text style={styles.accountNumber}>{item.accountNumber}</Text>
-                    <Text style={styles.accountName}>{item.name}</Text>
-                  </View>
-                  {selectedAccount?.id === item.id && (
-                    <Text style={styles.accountCheckmark}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-              ItemSeparatorComponent={() => <View style={styles.accountSeparator} />}
-              style={styles.accountList}
-            />
+                    <View style={styles.accountInfo}>
+                      <Text style={styles.accountType}>
+                        {item.bankName || getAccountTypeName(item.type)}
+                      </Text>
+                      <Text style={styles.accountNumber}>{item.accountNumber}</Text>
+                      <Text style={styles.accountName}>{item.name}</Text>
+                    </View>
+                    {selectedAccount?.id === item.id && (
+                      <Text style={styles.accountCheckmark}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+                ItemSeparatorComponent={() => <View style={styles.accountSeparator} />}
+                style={styles.accountList}
+              />
+            )}
           </View>
         </View>
       </Modal>
@@ -533,6 +624,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
     flex: 1,
+    borderWidth: 1,
+    borderColor: '#DDD',
+  },
+  inputFieldError: {
+    borderColor: '#F44336',
   },
   input: {
     fontSize: 16,
@@ -542,6 +638,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     marginLeft: 12,
+  },
+  allButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginLeft: 8,
+  },
+  allButtonText: {
+    fontSize: 14,
+    color: '#007AFF',
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#F44336',
+    marginTop: 4,
+  },
+  balanceText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
   },
   row: {
     flexDirection: 'row',
@@ -601,7 +716,7 @@ const styles = StyleSheet.create({
     color: '#FF9800',
   },
   submitButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#333',
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -743,4 +858,26 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#F0F0F0',
   },
+  modalLoading: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  modalLoadingText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  modalEmpty: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  modalEmptyText: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 8,
+  },
+  modalEmptyHint: {
+    fontSize: 14,
+    color: '#999',
+  },
 });
+

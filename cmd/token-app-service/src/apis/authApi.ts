@@ -32,6 +32,17 @@ export interface LoginData {
 }
 
 /**
+ * 推薦人資訊
+ */
+export interface ReferralUser {
+  id: number;
+  account: string;
+  email: string;
+  name: string;
+  type: number;
+}
+
+/**
  * 用戶資訊
  */
 export interface User {
@@ -42,6 +53,7 @@ export interface User {
   email: string;
   createAt: string;
   referralCode: string;
+  referralUser?: ReferralUser;
   wallet: UserWallet;
 }
 

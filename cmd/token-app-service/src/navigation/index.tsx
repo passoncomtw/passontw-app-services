@@ -10,8 +10,7 @@ import TradeScreen from './screens/TradeScreen';
 import OrdersScreen from './screens/OrdersScreen';
 import OrderListScreen from './screens/OrderListScreen';
 import ProfileScreen from './screens/ProfileScreen';
-import CreateOrderBuyScreen from './screens/CreateOrderBuyScreen';
-import CreateOrderSellScreen from './screens/CreateOrderSellScreen';
+import CreateOrderScreen from './screens/CreateOrderScreen';
 import ConfirmOrderBuyScreen from './screens/ConfirmOrderBuyScreen';
 import ConfirmOrderSellScreen from './screens/ConfirmOrderSellScreen';
 import NotFound from './screens/NotFoundScreen';
@@ -115,11 +114,11 @@ function AuthenticatedStack() {
       <Stack.Screen name="HomeTabs" component={HomeTabs} />
       <Stack.Screen 
         name="CreateOrderBuy" 
-        component={CreateOrderBuyScreen}
+        component={CreateOrderScreen}
       />
       <Stack.Screen 
         name="CreateOrderSell" 
-        component={CreateOrderSellScreen}
+        component={CreateOrderScreen}
       />
       <Stack.Screen 
         name="ConfirmOrderBuy" 
@@ -203,8 +202,8 @@ const styles = StyleSheet.create({
 // 型別定義
 type RootStackParamList = {
   HomeTabs: undefined;
-  CreateOrderBuy: undefined;
-  CreateOrderSell: undefined;
+  CreateOrderBuy: { type: 'buy' };
+  CreateOrderSell: { type: 'sell' };
   ConfirmOrderBuy: {
     orderNumber: string;
     amount: number;
