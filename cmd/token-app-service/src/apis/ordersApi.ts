@@ -84,4 +84,12 @@ export const ordersApi = {
     const response = await httpClientWithAuth.postWithToken<ApiResponse<PendingOrder>>('/pending/orders', data);
     return response.data.data;
   },
+
+  /**
+   * 刪除掛單
+   * 需要認證 token
+   */
+  deletePendingOrder: async (orderId: string): Promise<void> => {
+    await httpClientWithAuth.deleteWithToken(`/pending/orders/${orderId}`);
+  },
 };

@@ -19,16 +19,12 @@ export interface PendingOrder {
 interface OrdersListProps {
   orders: PendingOrder[];
   showSuccessAlert?: boolean;
-  onLockToggle: (orderId: string, currentStatus: 'active' | 'locked') => void;
-  onStart: (orderId: string) => void;
   onDelete: (orderId: string) => void;
 }
 
 export default function OrdersList({ 
   orders, 
   showSuccessAlert = true,
-  onLockToggle,
-  onStart,
   onDelete,
 }: OrdersListProps) {
   const formatNumber = (num: number) => {
@@ -100,41 +96,6 @@ export default function OrdersList({
 
           {/* 操作按鈕 */}
           <View style={styles.pendingActions}>
-            {order.status === 'active' ? (
-              <>
-                <Pressable 
-                  style={({ pressed }) => [
-                    styles.btnSmall,
-                    styles.btnGray,
-                    pressed && styles.btnPressed,
-                  ]}
-                  onPress={() => onLockToggle(order.id, order.status)}
-                >
-                  <Text style={styles.btnSmallText}>鎖定</Text>
-                </Pressable>
-                <Pressable 
-                  style={({ pressed }) => [
-                    styles.btnSmall,
-                    styles.btnGreen,
-                    pressed && styles.btnPressed,
-                  ]}
-                  onPress={() => onStart(order.id)}
-                >
-                  <Text style={styles.btnSmallTextWhite}>開始</Text>
-                </Pressable>
-              </>
-            ) : (
-              <Pressable 
-                style={({ pressed }) => [
-                  styles.btnSmall,
-                  styles.btnGreen,
-                  pressed && styles.btnPressed,
-                ]}
-                onPress={() => onLockToggle(order.id, order.status)}
-              >
-                <Text style={styles.btnSmallTextWhite}>解鎖</Text>
-              </Pressable>
-            )}
             <Pressable 
               style={({ pressed }) => [
                 styles.btnSmall,

@@ -8,6 +8,7 @@ import type { CreatePendingOrderRequest } from '@/apis/ordersApi';
 export const ORDERS_ACTIONS = {
   FETCH_PENDING_ORDERS_REQUEST: 'orders/fetchPendingOrdersRequest',
   CREATE_PENDING_ORDER_REQUEST: 'orders/createPendingOrderRequest',
+  DELETE_PENDING_ORDER_REQUEST: 'orders/deletePendingOrderRequest',
 } as const;
 
 /**
@@ -15,6 +16,15 @@ export const ORDERS_ACTIONS = {
  */
 export interface CreatePendingOrderPayload {
   data: CreatePendingOrderRequest;
+  onSuccess?: () => void;
+  onError?: (error: string) => void;
+}
+
+/**
+ * 刪除掛單請求的參數
+ */
+export interface DeletePendingOrderPayload {
+  orderId: string;
   onSuccess?: () => void;
   onError?: (error: string) => void;
 }
@@ -31,6 +41,14 @@ export const fetchPendingOrdersRequest = () => ({
  */
 export const createPendingOrderRequest = (payload: CreatePendingOrderPayload) => ({
   type: ORDERS_ACTIONS.CREATE_PENDING_ORDER_REQUEST,
+  payload,
+});
+
+/**
+ * 請求刪除掛單
+ */
+export const deletePendingOrderRequest = (payload: DeletePendingOrderPayload) => ({
+  type: ORDERS_ACTIONS.DELETE_PENDING_ORDER_REQUEST,
   payload,
 });
 

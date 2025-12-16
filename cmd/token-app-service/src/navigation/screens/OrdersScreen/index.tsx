@@ -6,7 +6,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchPendingOrdersRequest } from '../../store/actions/ordersActions';
+import { fetchPendingOrdersRequest, deletePendingOrderRequest } from '../../store/actions/ordersActions';
 import EmptyState from './components/EmptyState';
 import OrdersList, { PendingOrder } from './components/OrdersList';
 import type { PendingOrder as ApiPendingOrder } from '@/apis/ordersApi';
@@ -31,7 +31,7 @@ function mapApiOrderToComponentOrder(apiOrder: ApiPendingOrder, type: 'buy' | 's
 export default function OrdersScreen() {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
-  const { buy, sell, loading, error } = useAppSelector((state) => state.orders);
+  const { buy, sell, loading, error, deleting } = useAppSelector((state) => state.orders);
 
   // 將 buy 和 sell 轉換為組件格式的陣列
   const orders = useMemo(() => {
@@ -104,19 +104,21 @@ export default function OrdersScreen() {
     Alert.alert('選擇掛單類型', '請選擇要建立的掛單類型', options);
   };
 
-  const handleLockToggle = (orderId: string, currentStatus: 'active' | 'locked') => {
-    // TODO: 實作鎖定/解鎖 API 調用
-    Alert.alert('提示', currentStatus === 'active' ? '已鎖定掛單' : '已解除鎖定');
-    // 重新取得掛單列表
-    dispatch(fetchPendingOrdersRequest());
+  const handleDeleteSuccess = () => {
+    logger.info('OrdersScreen - 刪除掛單成功');
   };
 
-  const handleStart = (orderId: string) => {
-    Alert.alert('提示', '開始交易');
-    // TODO: 導航到交易頁面
+  const handleDeleteError = (error: string) => {
+    logger.error('OrdersScreen - 刪除掛單失敗', { error });
+    Alert.alert('錯誤', error);
   };
 
   const handleDelete = (orderId: string) => {
+    if (deleting) {
+      logger.warn('OrdersScreen - 刪除進行中，請勿重複操作');
+      return;
+    }
+
     Alert.alert(
       '確認刪除',
       '確定要刪除此掛單嗎？',
@@ -126,9 +128,12 @@ export default function OrdersScreen() {
           text: '刪除',
           style: 'destructive',
           onPress: () => {
-            // TODO: 實作刪除 API 調用
-            // 重新取得掛單列表
-            dispatch(fetchPendingOrdersRequest());
+            logger.info('OrdersScreen - 開始刪除掛單', { orderId });
+            dispatch(deletePendingOrderRequest({
+              orderId,
+              onSuccess: handleDeleteSuccess,
+              onError: handleDeleteError,
+            }));
           },
         },
       ]
@@ -178,9 +183,7 @@ export default function OrdersScreen() {
       ) : (
         <OrdersList
           orders={orders}
-            showSuccessAlert={false}
-          onLockToggle={handleLockToggle}
-          onStart={handleStart}
+          showSuccessAlert={false}
           onDelete={handleDelete}
         />
         )

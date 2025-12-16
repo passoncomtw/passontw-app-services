@@ -18,16 +18,8 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-
-    /* Path mapping */
-    "baseUrl": ".",
-    "paths": {
-      "@pkg/*": ["../../pkg/*"],
-      "@pkg/logger": ["../../pkg/logger"],
-      "@pkg/utils": ["../../pkg/utils"]
-    }
+    "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "electron", "../../pkg/**/*.ts"],
+  "include": ["src", "electron"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
