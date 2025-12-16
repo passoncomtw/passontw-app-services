@@ -18,10 +18,13 @@ import {
   Modal,
   TouchableOpacity,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchBankCardsRequest } from '../../store/actions/bankCardsActions';
+import { createPendingOrderRequest } from '../../store/actions/ordersActions';
+import { clearCreateError } from '../../store/slices/ordersSlice';
 
 // 帳戶類型
 interface PaymentAccount {
@@ -43,6 +46,7 @@ export default function CreateOrderScreen() {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
   const { cards: bankCards, loading: bankCardsLoading } = useAppSelector((state) => state.bankCards);
+  const { creating, createError } = useAppSelector((state) => state.orders);
   
   // 從路由名稱判斷是買幣還是賣幣
   const routeName = route.name;
@@ -55,6 +59,7 @@ export default function CreateOrderScreen() {
   useFocusEffect(
     React.useCallback(() => {
       dispatch(fetchBankCardsRequest());
+      dispatch(clearCreateError());
     }, [dispatch])
   );
 
@@ -69,13 +74,9 @@ export default function CreateOrderScreen() {
   
   const [amount, setAmount] = useState('');
   const [selectedAccount, setSelectedAccount] = useState<PaymentAccount | null>(null);
-  const [isSplit, setIsSplit] = useState<boolean>(true);
   const [minAmount, setMinAmount] = useState('');
-  const [paymentTimeout, setPaymentTimeout] = useState<number>(15);
   const [transactionPassword, setTransactionPassword] = useState('');
   const [showAccountModal, setShowAccountModal] = useState(false);
-  const [showSplitModal, setShowSplitModal] = useState(false);
-  const [showTimeoutModal, setShowTimeoutModal] = useState(false);
   const [amountError, setAmountError] = useState<string>('');
 
   // 計算交易金額（假設 1 E幣 = 1 CNY）
@@ -136,23 +137,34 @@ export default function CreateOrderScreen() {
     setShowAccountModal(false);
   };
 
-  const handleSelectSplit = () => {
-    setShowSplitModal(true);
-  };
+  // 建立掛單成功後的回調
+  useEffect(() => {
+    if (!creating && !createError && amount && selectedAccount) {
+      // 檢查是否剛建立成功（表單有值但沒有錯誤且不在建立中）
+      const hasSubmitted = amount !== '' && selectedAccount !== null;
+      if (hasSubmitted) {
+        // 重置表單
+        setAmount('');
+        setSelectedAccount(null);
+        setMinAmount('');
+        setTransactionPassword('');
+        setAmountError('');
+        
+        Alert.alert('成功', `${isBuy ? '購買' : '出售'}掛單建立成功`, [
+          { text: '確定', onPress: () => navigation.goBack() },
+        ]);
+      }
+    }
+  }, [creating, createError]);
 
-  const handleSplitSelect = (value: boolean) => {
-    setIsSplit(value);
-    setShowSplitModal(false);
-  };
-
-  const handleSelectTimeout = () => {
-    setShowTimeoutModal(true);
-  };
-
-  const handleTimeoutSelect = (minutes: number) => {
-    setPaymentTimeout(minutes);
-    setShowTimeoutModal(false);
-  };
+  // 顯示建立錯誤
+  useEffect(() => {
+    if (createError) {
+      Alert.alert('建立失敗', createError, [
+        { text: '確定', onPress: () => dispatch(clearCreateError()) },
+      ]);
+    }
+  }, [createError]);
 
   const handleSubmit = () => {
     // 驗證
@@ -189,26 +201,21 @@ export default function CreateOrderScreen() {
       return;
     }
 
-    // TODO: 透過 saga 調用 API 建立掛單
+    // 透過 saga 調用 API 建立掛單
     Alert.alert('確認', `確定建立${isBuy ? '購買' : '出售'}掛單？`, [
       { text: '取消', style: 'cancel' },
       { text: '確定', onPress: () => {
-        // TODO: 實作建立掛單 API
-        console.log(`建立${isBuy ? '購買' : '出售'}掛單`, {
-          type: isBuy ? 0 : 1,
+        dispatch(createPendingOrderRequest({
+          type: isBuy ? 0 : 1, // 0: 買幣, 1: 賣幣
           amount: amountNum,
           minAmount: minAmountNum,
-          isSplit,
-          paymentTimeout,
-          bankcardId: selectedAccount.id,
-        });
-        // 建立成功後返回上一頁
-        navigation.goBack();
+          bankcardId: parseInt(selectedAccount.id),
+          transactionCode: transactionPassword,
+          transactionMinutes: 60, // 預設 60 分鐘
+        }));
       }},
     ]);
   };
-
-  const timeoutOptions = [15, 30, 45, 60];
 
   return (
     <View style={styles.container}>
@@ -321,24 +328,6 @@ export default function CreateOrderScreen() {
               </Text>
             </View>
 
-            {/* 是否拆單 */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>是否拆單</Text>
-              <Pressable 
-                style={({ pressed }) => [
-                  styles.selectField,
-                  pressed && styles.selectFieldPressed,
-                ]}
-                onPress={handleSelectSplit}
-              >
-                <Text style={styles.selectText}>{isSplit ? '是' : '否'}</Text>
-                <Text style={styles.selectArrow}>›</Text>
-              </Pressable>
-              <Text style={styles.hint}>
-                當訂單數量較大時，拆單掛單會加速完成交易
-              </Text>
-            </View>
-
             {/* 最小交易量 */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>最小交易量</Text>
@@ -352,24 +341,6 @@ export default function CreateOrderScreen() {
                   keyboardType="numeric"
                 />
               </View>
-            </View>
-
-            {/* 支付時效 */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>支付時效</Text>
-                <Text style={styles.infoIcon}>ⓘ</Text>
-              </View>
-              <Pressable 
-                style={({ pressed }) => [
-                  styles.selectField,
-                  pressed && styles.selectFieldPressed,
-                ]}
-                onPress={handleSelectTimeout}
-              >
-                <Text style={styles.selectText}>{paymentTimeout} 分鐘</Text>
-                <Text style={styles.selectArrow}>›</Text>
-              </Pressable>
             </View>
 
             {/* 交易密碼 */}
@@ -397,12 +368,18 @@ export default function CreateOrderScreen() {
               style={({ pressed }) => [
                 styles.submitButton,
                 pressed && styles.submitButtonPressed,
+                creating && styles.submitButtonDisabled,
               ]}
               onPress={handleSubmit}
+              disabled={creating}
             >
-              <Text style={styles.submitButtonText}>
-                {isBuy ? '購買E幣' : '出售E幣'}
-              </Text>
+              {creating ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.submitButtonText}>
+                  {isBuy ? '購買E幣' : '出售E幣'}
+                </Text>
+              )}
             </Pressable>
           </View>
         </ScrollView>
@@ -472,78 +449,6 @@ export default function CreateOrderScreen() {
         </View>
       </Modal>
 
-      {/* 拆單選擇 Modal */}
-      <Modal
-        visible={showSplitModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowSplitModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>是否拆單</Text>
-              <TouchableOpacity 
-                onPress={() => setShowSplitModal(false)}
-                style={styles.modalCloseButton}
-              >
-                <Text style={styles.modalCloseText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              style={[styles.optionItem, isSplit && styles.optionItemSelected]}
-              onPress={() => handleSplitSelect(true)}
-            >
-              <Text style={[styles.optionText, isSplit && styles.optionTextSelected]}>是</Text>
-              {isSplit && <Text style={styles.optionCheckmark}>✓</Text>}
-            </TouchableOpacity>
-            <View style={styles.optionSeparator} />
-            <TouchableOpacity
-              style={[styles.optionItem, !isSplit && styles.optionItemSelected]}
-              onPress={() => handleSplitSelect(false)}
-            >
-              <Text style={[styles.optionText, !isSplit && styles.optionTextSelected]}>否</Text>
-              {!isSplit && <Text style={styles.optionCheckmark}>✓</Text>}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* 支付時效選擇 Modal */}
-      <Modal
-        visible={showTimeoutModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowTimeoutModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>支付時效</Text>
-              <TouchableOpacity 
-                onPress={() => setShowTimeoutModal(false)}
-                style={styles.modalCloseButton}
-              >
-                <Text style={styles.modalCloseText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            {timeoutOptions.map((minutes, index) => (
-              <React.Fragment key={minutes}>
-                {index > 0 && <View style={styles.optionSeparator} />}
-                <TouchableOpacity
-                  style={[styles.optionItem, paymentTimeout === minutes && styles.optionItemSelected]}
-                  onPress={() => handleTimeoutSelect(minutes)}
-                >
-                  <Text style={[styles.optionText, paymentTimeout === minutes && styles.optionTextSelected]}>
-                    {minutes} 分鐘
-                  </Text>
-                  {paymentTimeout === minutes && <Text style={styles.optionCheckmark}>✓</Text>}
-                </TouchableOpacity>
-              </React.Fragment>
-            ))}
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -723,6 +628,9 @@ const styles = StyleSheet.create({
   },
   submitButtonPressed: {
     opacity: 0.9,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
   },
   submitButtonText: {
     color: '#fff',

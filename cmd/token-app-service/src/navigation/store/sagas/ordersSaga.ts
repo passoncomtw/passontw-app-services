@@ -1,12 +1,16 @@
 import { call, put, takeLatest } from 'redux-saga/effects';
 import { SagaIterator } from 'redux-saga';
+import { PayloadAction } from '@reduxjs/toolkit';
 import logger from '@pkg/logger';
-import { ordersApi } from '@/apis';
+import { ordersApi, CreatePendingOrderRequest } from '@/apis';
 import { ORDERS_ACTIONS } from '../actions/ordersActions';
 import {
   fetchOrdersStart,
   fetchOrdersSuccess,
   fetchOrdersFailure,
+  createOrderStart,
+  createOrderSuccess,
+  createOrderFailure,
 } from '../slices/ordersSlice';
 
 /**
@@ -47,11 +51,47 @@ function* fetchPendingOrdersSaga(): SagaIterator {
 }
 
 /**
+ * Create Pending Order Saga
+ * 使用 httpClient 處理建立掛單流程
+ */
+function* createPendingOrderSaga(action: PayloadAction<CreatePendingOrderRequest>): SagaIterator {
+  // 步驟 1: 開始建立掛單（設置 creating 狀態）
+  yield put(createOrderStart());
+
+  try {
+    // 步驟 2: 使用 httpClient 呼叫建立掛單 API
+    const orderData = yield call(ordersApi.createPendingOrder, action.payload);
+
+    logger.info('建立掛單成功', {
+      orderId: orderData.id,
+      type: action.payload.type === 0 ? '買幣' : '賣幣',
+      amount: action.payload.amount,
+    });
+
+    // 步驟 3: 建立成功後，更新 Redux State
+    yield put(createOrderSuccess(orderData));
+
+    // 步驟 4: 重新取得掛單列表以確保資料同步
+    yield put({ type: ORDERS_ACTIONS.FETCH_PENDING_ORDERS_REQUEST });
+  } catch (error: any) {
+    logger.error('建立掛單失敗', {
+      error: error.message || error,
+      type: action.payload.type === 0 ? '買幣' : '賣幣',
+    });
+
+    // 步驟 5: 如果有錯誤，設置錯誤訊息
+    const errorMessage = error.response?.data?.message || error.message || '建立掛單失敗，請稍後再試';
+    yield put(createOrderFailure(errorMessage));
+  }
+}
+
+/**
  * Watcher Saga
  * 監聽特定的 action 並觸發對應的 saga
  */
 export function* watchOrdersSagas(): SagaIterator {
   // takeLatest: 如果有多個請求，只處理最新的一個
   yield takeLatest(ORDERS_ACTIONS.FETCH_PENDING_ORDERS_REQUEST, fetchPendingOrdersSaga);
+  yield takeLatest(ORDERS_ACTIONS.CREATE_PENDING_ORDER_REQUEST, createPendingOrderSaga);
 }
 

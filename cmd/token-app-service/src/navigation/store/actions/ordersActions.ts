@@ -1,3 +1,5 @@
+import type { CreatePendingOrderRequest } from '@/apis/ordersApi';
+
 /**
  * Orders Actions
  * 定義掛單相關的 action creators
@@ -5,6 +7,7 @@
 
 export const ORDERS_ACTIONS = {
   FETCH_PENDING_ORDERS_REQUEST: 'orders/fetchPendingOrdersRequest',
+  CREATE_PENDING_ORDER_REQUEST: 'orders/createPendingOrderRequest',
 } as const;
 
 /**
@@ -12,5 +15,13 @@ export const ORDERS_ACTIONS = {
  */
 export const fetchPendingOrdersRequest = () => ({
   type: ORDERS_ACTIONS.FETCH_PENDING_ORDERS_REQUEST,
+});
+
+/**
+ * 請求建立掛單
+ */
+export const createPendingOrderRequest = (data: CreatePendingOrderRequest) => ({
+  type: ORDERS_ACTIONS.CREATE_PENDING_ORDER_REQUEST,
+  payload: data,
 });
 

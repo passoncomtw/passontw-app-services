@@ -9,6 +9,8 @@ interface OrdersState {
   sell: any | null; // PendingOrder | null
   loading: boolean;
   error: string | null;
+  creating: boolean; // 建立掛單中
+  createError: string | null; // 建立掛單錯誤
 }
 
 const initialState: OrdersState = {
@@ -16,6 +18,8 @@ const initialState: OrdersState = {
   sell: null,
   loading: false,
   error: null,
+  creating: false,
+  createError: null,
 };
 
 /**
@@ -43,6 +47,27 @@ const ordersSlice = createSlice({
     clearOrdersError(state) {
       state.error = null;
     },
+    createOrderStart(state) {
+      state.creating = true;
+      state.createError = null;
+    },
+    createOrderSuccess(state, action: PayloadAction<any>) {
+      state.creating = false;
+      // 根據類型更新對應的掛單
+      if (action.payload.type === 0) {
+        state.buy = action.payload;
+      } else {
+        state.sell = action.payload;
+      }
+      state.createError = null;
+    },
+    createOrderFailure(state, action: PayloadAction<string>) {
+      state.creating = false;
+      state.createError = action.payload;
+    },
+    clearCreateError(state) {
+      state.createError = null;
+    },
   },
 });
 
@@ -51,6 +76,10 @@ export const {
   fetchOrdersSuccess,
   fetchOrdersFailure,
   clearOrdersError,
+  createOrderStart,
+  createOrderSuccess,
+  createOrderFailure,
+  clearCreateError,
 } = ordersSlice.actions;
 
 export default ordersSlice.reducer;

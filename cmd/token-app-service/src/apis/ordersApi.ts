@@ -53,6 +53,18 @@ export interface UserPendingOrdersResponse {
   sell: PendingOrder | null;
 }
 
+/**
+ * 建立掛單請求
+ */
+export interface CreatePendingOrderRequest {
+  type: number; // 0: 買幣, 1: 賣幣
+  amount: number; // 掛單金額
+  minAmount: number; // 最小交易金額
+  bankcardId: number; // 銀行卡 ID
+  transactionCode: string; // 交易密碼
+  transactionMinutes: number; // 交易時限（分鐘）
+}
+
 export const ordersApi = {
   /**
    * 取得使用者自己建立的掛單列表
@@ -60,6 +72,14 @@ export const ordersApi = {
    */
   getPendingOrders: async (): Promise<UserPendingOrdersResponse> => {
     const response = await httpClient.get<ApiResponse<UserPendingOrdersResponse>>('/users/pending/orders');
+    return response.data.data;
+  },
+
+  /**
+   * 建立掛單
+   */
+  createPendingOrder: async (data: CreatePendingOrderRequest): Promise<PendingOrder> => {
+    const response = await httpClient.post<ApiResponse<PendingOrder>>('/pending/orders', data);
     return response.data.data;
   },
 };
