@@ -1,4 +1,4 @@
-import httpClient from './httpClient';
+import { httpClientWithAuth } from './httpClient';
 import type { ApiResponse } from './authApi';
 
 /**
@@ -69,17 +69,19 @@ export const ordersApi = {
   /**
    * 取得使用者自己建立的掛單列表
    * 返回買幣和賣幣掛單
+   * 需要認證 token
    */
   getPendingOrders: async (): Promise<UserPendingOrdersResponse> => {
-    const response = await httpClient.get<ApiResponse<UserPendingOrdersResponse>>('/users/pending/orders');
+    const response = await httpClientWithAuth.getWithToken<ApiResponse<UserPendingOrdersResponse>>('/users/pending/orders');
     return response.data.data;
   },
 
   /**
    * 建立掛單
+   * 需要認證 token
    */
   createPendingOrder: async (data: CreatePendingOrderRequest): Promise<PendingOrder> => {
-    const response = await httpClient.post<ApiResponse<PendingOrder>>('/pending/orders', data);
+    const response = await httpClientWithAuth.postWithToken<ApiResponse<PendingOrder>>('/pending/orders', data);
     return response.data.data;
   },
 };

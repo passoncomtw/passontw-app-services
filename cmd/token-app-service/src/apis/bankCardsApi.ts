@@ -1,4 +1,4 @@
-import httpClient from './httpClient';
+import { httpClientWithAuth } from './httpClient';
 import type { ApiResponse } from './authApi';
 
 /**
@@ -12,6 +12,7 @@ export interface Bank {
 
 /**
  * 銀行卡資訊
+ * 注意：此接口定義 GET /bankcards API 返回的數據格式
  */
 export interface BankCard {
   id: number;
@@ -19,7 +20,7 @@ export interface BankCard {
   bankId: number;
   name: string;
   cardNumber: string;
-  branchName: string;
+  branchName: string; // 必需，銀行卡必定有分行名稱
   status: number;
   createdAt: string;
   bank: Bank;
@@ -28,9 +29,10 @@ export interface BankCard {
 export const bankCardsApi = {
   /**
    * 取得使用者的銀行卡列表
+   * 需要認證 token
    */
   getBankCards: async (): Promise<BankCard[]> => {
-    const response = await httpClient.get<ApiResponse<BankCard[]>>('/bankcards');
+    const response = await httpClientWithAuth.getWithToken<ApiResponse<BankCard[]>>('/bankcards');
     return response.data.data;
   },
 };

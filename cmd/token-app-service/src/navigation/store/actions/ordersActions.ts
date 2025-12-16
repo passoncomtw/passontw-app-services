@@ -11,6 +11,15 @@ export const ORDERS_ACTIONS = {
 } as const;
 
 /**
+ * 建立掛單請求的參數
+ */
+export interface CreatePendingOrderPayload {
+  data: CreatePendingOrderRequest;
+  onSuccess?: () => void;
+  onError?: (error: string) => void;
+}
+
+/**
  * 請求取得掛單列表
  */
 export const fetchPendingOrdersRequest = () => ({
@@ -20,8 +29,8 @@ export const fetchPendingOrdersRequest = () => ({
 /**
  * 請求建立掛單
  */
-export const createPendingOrderRequest = (data: CreatePendingOrderRequest) => ({
+export const createPendingOrderRequest = (payload: CreatePendingOrderPayload) => ({
   type: ORDERS_ACTIONS.CREATE_PENDING_ORDER_REQUEST,
-  payload: data,
+  payload,
 });
 

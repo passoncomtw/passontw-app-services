@@ -43,6 +43,30 @@ export interface ReferralUser {
 }
 
 /**
+ * 銀行資訊
+ */
+export interface Bank {
+  id: number;
+  bankCode: string;
+  bankName: string;
+}
+
+/**
+ * 銀行卡資料結構
+ */
+export interface BankCard {
+  id: number;
+  userId?: number; // 登入時可能不包含，需要在客戶端添加
+  bankId: number;
+  cardNumber: string;
+  name: string;
+  branchName: string; // 必需，銀行卡必定有分行名稱
+  status: number;
+  createdAt: string;
+  bank: Bank;
+}
+
+/**
  * 用戶資訊
  */
 export interface User {
@@ -55,6 +79,7 @@ export interface User {
   referralCode: string;
   referralUser?: ReferralUser;
   wallet: UserWallet;
+  bankCards?: BankCard[]; // 登入時會返回銀行卡列表
 }
 
 /**

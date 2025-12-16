@@ -68,6 +68,10 @@ const ordersSlice = createSlice({
     clearCreateError(state) {
       state.createError = null;
     },
+    resetOrders() {
+      // 重置為初始狀態（用於登出）
+      return initialState;
+    },
   },
 });
 
@@ -80,6 +84,7 @@ export const {
   createOrderSuccess,
   createOrderFailure,
   clearCreateError,
+  resetOrders,
 } = ordersSlice.actions;
 
 export default ordersSlice.reducer;

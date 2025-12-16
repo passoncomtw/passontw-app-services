@@ -2,8 +2,8 @@ import { call, put, takeLatest } from 'redux-saga/effects';
 import { SagaIterator } from 'redux-saga';
 import { PayloadAction } from '@reduxjs/toolkit';
 import logger from '@pkg/logger';
-import { ordersApi, CreatePendingOrderRequest } from '@/apis';
-import { ORDERS_ACTIONS } from '../actions/ordersActions';
+import { ordersApi } from '@/apis';
+import { ORDERS_ACTIONS, CreatePendingOrderPayload } from '../actions/ordersActions';
 import {
   fetchOrdersStart,
   fetchOrdersSuccess,
@@ -53,19 +53,24 @@ function* fetchPendingOrdersSaga(): SagaIterator {
 /**
  * Create Pending Order Saga
  * 使用 httpClient 處理建立掛單流程
+ * 
+ * 支援 onSuccess 和 onError 回調函數，讓 UI 可以在 API 完成後執行特定邏輯
  */
-function* createPendingOrderSaga(action: PayloadAction<CreatePendingOrderRequest>): SagaIterator {
+function* createPendingOrderSaga(action: PayloadAction<CreatePendingOrderPayload>): SagaIterator {
+  const { data, onSuccess, onError } = action.payload;
+  console.log("🚀 ~ createPendingOrderSaga ~ data:", data)
+
   // 步驟 1: 開始建立掛單（設置 creating 狀態）
   yield put(createOrderStart());
 
   try {
     // 步驟 2: 使用 httpClient 呼叫建立掛單 API
-    const orderData = yield call(ordersApi.createPendingOrder, action.payload);
+    const orderData = yield call(ordersApi.createPendingOrder, data);
 
     logger.info('建立掛單成功', {
       orderId: orderData.id,
-      type: action.payload.type === 0 ? '買幣' : '賣幣',
-      amount: action.payload.amount,
+      type: data.type === 0 ? '買幣' : '賣幣',
+      amount: data.amount,
     });
 
     // 步驟 3: 建立成功後，更新 Redux State
@@ -73,15 +78,25 @@ function* createPendingOrderSaga(action: PayloadAction<CreatePendingOrderRequest
 
     // 步驟 4: 重新取得掛單列表以確保資料同步
     yield put({ type: ORDERS_ACTIONS.FETCH_PENDING_ORDERS_REQUEST });
+
+    // 步驟 5: 調用成功回調（如果有提供）
+    if (onSuccess) {
+      onSuccess();
+    }
   } catch (error: any) {
     logger.error('建立掛單失敗', {
       error: error.message || error,
-      type: action.payload.type === 0 ? '買幣' : '賣幣',
+      type: data.type === 0 ? '買幣' : '賣幣',
     });
 
-    // 步驟 5: 如果有錯誤，設置錯誤訊息
+    // 步驟 6: 如果有錯誤，設置錯誤訊息
     const errorMessage = error.response?.data?.message || error.message || '建立掛單失敗，請稍後再試';
     yield put(createOrderFailure(errorMessage));
+
+    // 步驟 7: 調用錯誤回調（如果有提供）
+    if (onError) {
+      onError(errorMessage);
+    }
   }
 }
 

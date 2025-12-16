@@ -2,6 +2,8 @@ import { call, put, takeLatest, delay } from 'redux-saga/effects';
 import { PayloadAction } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loginStart, loginSuccess, loginFailure, logout, registerSuccess } from '../slices/authSlices';
+import { fetchBankCardsSuccess, resetBankCards, BankCard } from '../slices/bankCardsSlice';
+import { fetchOrdersSuccess, resetOrders } from '../slices/ordersSlice';
 import logger from '@pkg/logger';
 import { authApi } from '@/apis';
 import type { LoginCredentials, RegisterCredentials, LoginData, RegisterData } from '@/apis';
@@ -28,25 +30,58 @@ function* loginSaga(action: PayloadAction<LoginCredentials>) {
     // 使用 httpClient 呼叫登入 API
     const data: LoginData = yield call(authApi.login, action.payload);
 
-      logger.info('登入成功', {
-        userId: data.user.id,
-        userName: data.user.name,
-        account: data.user.account,
-      });
+    logger.info('登入成功', {
+      userId: data.user.id,
+      userName: data.user.name,
+      account: data.user.account,
+      bankCardsCount: data.user.bankCards?.length || 0,
+    });
 
     // 儲存 token 到 AsyncStorage
-      if (data.access_token) {
+    if (data.access_token) {
       yield call([AsyncStorage, 'setItem'], 'authToken', data.access_token);
       yield call([AsyncStorage, 'setItem'], 'expireIn', data.expireIn.toString());
       yield call([AsyncStorage, 'setItem'], 'user', JSON.stringify(data.user));
-      }
+    }
 
-      // Dispatch loginSuccess（更新 Redux State）
-      yield put(loginSuccess({
-        user: data.user,
-        accessToken: data.access_token,
-        expireIn: data.expireIn,
-      }));
+    // Dispatch loginSuccess（更新 Redux State）
+    yield put(loginSuccess({
+      user: data.user,
+      accessToken: data.access_token,
+      expireIn: data.expireIn,
+    }));
+
+    // 清除舊的掛單資料
+    yield put(fetchOrdersSuccess({ buy: null, sell: null }));
+
+    // 同步銀行卡資料到 bankCards store
+    if (data.user.bankCards && data.user.bankCards.length > 0) {
+      const cardsWithUserId = data.user.bankCards.map((card) => ({
+        ...card,
+        userId: data.user.id,
+      })) as BankCard[];
+
+      logger.info('🔄 登入成功 - 同步銀行卡資料到 store', {
+        userId: data.user.id,
+        userName: data.user.name,
+        count: cardsWithUserId.length,
+        cardIds: cardsWithUserId.map(c => c.id),
+        cards: cardsWithUserId.map(c => ({
+          id: c.id,
+          name: c.name,
+          cardNumber: c.cardNumber,
+        })),
+      });
+
+      yield put(fetchBankCardsSuccess(cardsWithUserId));
+    } else {
+      // 如果沒有銀行卡，清空 store
+      logger.info('🔄 登入成功 - 清空銀行卡資料（無銀行卡）', {
+        userId: data.user.id,
+        userName: data.user.name,
+      });
+      yield put(fetchBankCardsSuccess([]));
+    }
   } catch (error: any) {
       logger.error('登入失敗', {
       error: error.message || error,
@@ -105,14 +140,26 @@ function* logoutSaga() {
     logger.error('登出 API 呼叫失敗', error);
     // 即使 API 失敗，也要清除本地數據並登出
   } finally {
-    // 清除 AsyncStorage
-    yield call([AsyncStorage, 'multiRemove'], ['authToken', 'expireIn', 'user']);
+    // 清除 AsyncStorage（包括 Redux Persist 緩存）
+    yield call([AsyncStorage, 'multiRemove'], ['authToken', 'expireIn', 'user', 'persist:root']);
+
+    logger.info('🧹 清除所有本地資料和 Store 狀態');
+
+    // 重置所有 Store 的資料為初始狀態
+    yield put(logout()); // 重置 auth state
+    yield put(resetBankCards()); // 重置 bankCards state
+    yield put(resetOrders()); // 重置 orders state
+
+    logger.info('✅ 登出完成 - 所有資料已重置為初始狀態', {
+      auth: '已重置',
+      bankCards: '已重置',
+      orders: '已重置',
+      asyncStorage: '已清除',
+      persistCache: '已清除',
+    });
 
       // 延遲一下讓使用者看到登出動畫
       yield delay(300);
-      
-      // Dispatch logout（清除 Redux State）
-      yield put(logout());
   }
 }
 

@@ -22,6 +22,29 @@ interface ReferralUser {
 }
 
 /**
+ * 銀行資訊
+ */
+interface Bank {
+  id: number;
+  bankCode: string;
+  bankName: string;
+}
+
+/**
+ * 銀行卡資料結構
+ */
+interface BankCard {
+  id: number;
+  bankId: number;
+  cardNumber: string;
+  name: string;
+  branchName?: string;
+  status: number;
+  createdAt: string;
+  bank: Bank;
+}
+
+/**
  * 用戶資訊
  */
 interface User {
@@ -34,6 +57,7 @@ interface User {
   referralCode: string;
   referralUser?: ReferralUser;
   wallet: UserWallet;
+  bankCards?: BankCard[]; // 登入時會返回銀行卡列表
 }
 
 /**
@@ -93,11 +117,8 @@ const authSlice = createSlice({
       state.user = action.payload;
     },
     logout(state) {
-      state.isAuthenticated = false;
-      state.user = null;
-      state.accessToken = null;
-      state.expireIn = null;
-      state.error = null;
+      // 完全重置為初始狀態
+      return initialState;
     },
   },
 });

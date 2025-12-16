@@ -10,8 +10,12 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { Colors } from './constants/Colors';
 import { Navigation } from './navigation';
 import { store, persistor } from './navigation/store/configureStore';
+import { setStoreRef } from './apis';
 
 SplashScreen.preventAutoHideAsync();
+
+// 設定 Redux store 引用，讓 httpClient 可以從 store 讀取 token
+setStoreRef(store);
 
 export function App() {
   const colorScheme = useColorScheme();

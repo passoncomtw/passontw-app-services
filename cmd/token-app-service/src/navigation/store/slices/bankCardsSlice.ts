@@ -11,14 +11,15 @@ export interface Bank {
 
 /**
  * 銀行卡資訊
+ * 注意：userId 是必需的，在進入 store 前會被添加
  */
 export interface BankCard {
   id: number;
-  userId: number;
+  userId: number; // 必需，確保 store 中的銀行卡都有 userId
   bankId: number;
   name: string;
   cardNumber: string;
-  branchName: string;
+  branchName: string; // 必需，銀行卡必定有分行名稱
   status: number;
   createdAt: string;
   bank: Bank;
@@ -63,6 +64,10 @@ const bankCardsSlice = createSlice({
     clearBankCardsError(state) {
       state.error = null;
     },
+    resetBankCards() {
+      // 重置為初始狀態（用於登出）
+      return initialState;
+    },
   },
 });
 
@@ -71,6 +76,7 @@ export const {
   fetchBankCardsSuccess,
   fetchBankCardsFailure,
   clearBankCardsError,
+  resetBankCards,
 } = bankCardsSlice.actions;
 
 export default bankCardsSlice.reducer;

@@ -1,12 +1,13 @@
-import httpClient from './httpClient';
+import { httpClientWithAuth } from './httpClient';
 import type { ApiResponse, User } from './authApi';
 
 export const userApi = {
   /**
    * 取得用戶資訊
+   * 需要認證 token
    */
   getUser: async (userId: number): Promise<User> => {
-    const response = await httpClient.get<ApiResponse<User>>(`/users/${userId}`);
+    const response = await httpClientWithAuth.getWithToken<ApiResponse<User>>(`/users/${userId}`);
     return response.data.data;
   },
 };

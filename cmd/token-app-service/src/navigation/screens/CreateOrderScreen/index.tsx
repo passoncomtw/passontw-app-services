@@ -46,7 +46,7 @@ export default function CreateOrderScreen() {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
   const { cards: bankCards, loading: bankCardsLoading } = useAppSelector((state) => state.bankCards);
-  const { creating, createError } = useAppSelector((state) => state.orders);
+  const { buy, sell, creating, createError } = useAppSelector((state) => state.orders);
   
   // 從路由名稱判斷是買幣還是賣幣
   const routeName = route.name;
@@ -55,22 +55,44 @@ export default function CreateOrderScreen() {
   // 從用戶資料獲取可用餘額（賣幣時使用）
   const availableBalance = user?.wallet?.usefulBalance || 0;
 
-  // 當頁面聚焦時，取得銀行卡列表
+  // 當頁面聚焦時，取得銀行卡列表並檢查是否已有掛單
   useFocusEffect(
     React.useCallback(() => {
+      // 檢查是否已經有該類型的掛單
+      if (isBuy && buy) {
+        Alert.alert('提示', '您已有買幣掛單，無法再新增', [
+          { text: '確定', onPress: () => navigation.goBack() },
+        ]);
+        return;
+      }
+      if (!isBuy && sell) {
+        Alert.alert('提示', '您已有賣幣掛單，無法再新增', [
+          { text: '確定', onPress: () => navigation.goBack() },
+        ]);
+        return;
+      }
+
       dispatch(fetchBankCardsRequest());
       dispatch(clearCreateError());
-    }, [dispatch])
+    }, [dispatch, isBuy, buy, sell, navigation])
   );
 
   // 將銀行卡資料轉換為 PaymentAccount 格式
-  const paymentAccounts: PaymentAccount[] = bankCards.map((card) => ({
-    id: String(card.id),
-    type: 'bank' as const,
-    name: card.name,
-    accountNumber: card.cardNumber,
-    bankName: card.bank.bankName,
-  }));
+  const paymentAccounts: PaymentAccount[] = bankCards.map((card) => {
+    console.log('[CreateOrderScreen] 轉換銀行卡資料:', {
+      id: card.id,
+      name: card.name,
+      cardNumber: card.cardNumber,
+      bankName: card.bank.bankName,
+    });
+    return {
+      id: String(card.id),
+      type: 'bank' as const,
+      name: card.name,
+      accountNumber: card.cardNumber,
+      bankName: card.bank.bankName,
+    };
+  });
   
   const [amount, setAmount] = useState('');
   const [selectedAccount, setSelectedAccount] = useState<PaymentAccount | null>(null);
@@ -133,38 +155,36 @@ export default function CreateOrderScreen() {
   };
 
   const handleAccountSelect = (account: PaymentAccount) => {
+    console.log('[CreateOrderScreen] 選擇銀行卡:', {
+      id: account.id,
+      name: account.name,
+      accountNumber: account.accountNumber,
+      bankName: account.bankName,
+    });
     setSelectedAccount(account);
     setShowAccountModal(false);
   };
 
-  // 建立掛單成功後的回調
-  useEffect(() => {
-    if (!creating && !createError && amount && selectedAccount) {
-      // 檢查是否剛建立成功（表單有值但沒有錯誤且不在建立中）
-      const hasSubmitted = amount !== '' && selectedAccount !== null;
-      if (hasSubmitted) {
-        // 重置表單
-        setAmount('');
-        setSelectedAccount(null);
-        setMinAmount('');
-        setTransactionPassword('');
-        setAmountError('');
-        
-        Alert.alert('成功', `${isBuy ? '購買' : '出售'}掛單建立成功`, [
-          { text: '確定', onPress: () => navigation.goBack() },
-        ]);
-      }
-    }
-  }, [creating, createError]);
+  // 建立掛單成功的回調
+  const handleCreateSuccess = React.useCallback(() => {
+    // 重置表單
+    setAmount('');
+    setSelectedAccount(null);
+    setMinAmount('');
+    setTransactionPassword('');
+    setAmountError('');
+    
+    Alert.alert('成功', `${isBuy ? '購買' : '出售'}掛單建立成功`, [
+      { text: '確定', onPress: () => navigation.goBack() },
+    ]);
+  }, [isBuy, navigation]);
 
-  // 顯示建立錯誤
-  useEffect(() => {
-    if (createError) {
-      Alert.alert('建立失敗', createError, [
-        { text: '確定', onPress: () => dispatch(clearCreateError()) },
-      ]);
-    }
-  }, [createError]);
+  // 建立掛單失敗的回調
+  const handleCreateError = React.useCallback((errorMessage: string) => {
+    Alert.alert('建立失敗', errorMessage, [
+      { text: '確定', onPress: () => dispatch(clearCreateError()) },
+    ]);
+  }, [dispatch]);
 
   const handleSubmit = () => {
     // 驗證
@@ -201,17 +221,39 @@ export default function CreateOrderScreen() {
       return;
     }
 
+    // 再次檢查是否已有該類型的掛單
+    if (isBuy && buy) {
+      Alert.alert('提示', '您已有買幣掛單，無法再新增');
+      return;
+    }
+    if (!isBuy && sell) {
+      Alert.alert('提示', '您已有賣幣掛單，無法再新增');
+      return;
+    }
+
     // 透過 saga 調用 API 建立掛單
+    const bankcardId = parseInt(selectedAccount.id);
+    console.log('[CreateOrderScreen] 準備建立掛單:', {
+      selectedAccountId: selectedAccount.id,
+      bankcardId: bankcardId,
+      type: isBuy ? 0 : 1,
+      amount: amountNum,
+    });
+
     Alert.alert('確認', `確定建立${isBuy ? '購買' : '出售'}掛單？`, [
       { text: '取消', style: 'cancel' },
       { text: '確定', onPress: () => {
         dispatch(createPendingOrderRequest({
-          type: isBuy ? 0 : 1, // 0: 買幣, 1: 賣幣
-          amount: amountNum,
-          minAmount: minAmountNum,
-          bankcardId: parseInt(selectedAccount.id),
-          transactionCode: transactionPassword,
-          transactionMinutes: 60, // 預設 60 分鐘
+          data: {
+            type: isBuy ? 0 : 1, // 0: 買幣, 1: 賣幣
+            amount: amountNum,
+            minAmount: minAmountNum,
+            bankcardId: bankcardId,
+            transactionCode: transactionPassword,
+            transactionMinutes: 60, // 預設 60 分鐘
+          },
+          onSuccess: handleCreateSuccess,
+          onError: handleCreateError,
         }));
       }},
     ]);

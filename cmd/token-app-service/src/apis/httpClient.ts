@@ -1,5 +1,4 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // 使用 Expo 環境變數，從 .env 讀取 BASE_URL
 // Expo 需要使用 EXPO_PUBLIC_ 前綴才能在 JavaScript 中使用
@@ -9,11 +8,21 @@ const baseURL =
 // 儲存導航引用（需要在 App 初始化時設定）
 let navigationRef: any = null;
 
+// 儲存 Redux store 引用（需要在 App 初始化時設定）
+let storeRef: any = null;
+
 /**
  * 設定導航引用（用於未授權時導航到登入頁）
  */
 export function setNavigationRef(ref: any) {
   navigationRef = ref;
+}
+
+/**
+ * 設定 Redux store 引用（用於從 state 讀取 token）
+ */
+export function setStoreRef(store: any) {
+  storeRef = store;
 }
 
 // HTTP 客戶端配置
@@ -27,15 +36,20 @@ const httpClient: AxiosInstance = axios.create({
 
 // 請求攔截器
 httpClient.interceptors.request.use(
-  async (config) => {
-    // 可以在這裡添加認證 token 等
+  (config) => {
+    // 從 Redux store 讀取 token
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      if (storeRef) {
+        const state = storeRef.getState();
+        const token = state.auth?.accessToken || null;
+
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+          console.log("🚀 ~ config.headers.Authorization:", config.headers.Authorization)
+        }
       }
     } catch (error) {
-      console.error('[HTTP] Failed to get token from AsyncStorage:', error);
+      console.error('[HTTP] Failed to get token from store:', error);
     }
     
     // 記錄請求
@@ -56,7 +70,7 @@ httpClient.interceptors.response.use(
     console.log(`[HTTP] ${response.status} ${response.config.url}`);
     return response;
   },
-  async (error) => {
+  (error) => {
     // 統一錯誤處理
     console.error('[HTTP] Response error:', error);
 
@@ -66,14 +80,9 @@ httpClient.interceptors.response.use(
        error.config.url.includes('/api/v1/auth/login'));
 
     if (error.response?.status === 401 && !isAuthLogin) {
-      // 其他 API 未授權時清除 token 並導航到登入頁
-      try {
-        await AsyncStorage.removeItem('authToken');
-      } catch (storageError) {
-        console.error('[HTTP] Failed to remove token from AsyncStorage:', storageError);
-      }
+      // 未授權時：導航到登入頁
+      console.warn('[HTTP] 401 Unauthorized - Redirecting to login');
 
-      // React Native 環境：使用導航引用導航到登入頁
       if (navigationRef) {
         import('@react-navigation/native').then(({ CommonActions }) => {
           navigationRef.dispatch(
@@ -91,6 +100,77 @@ httpClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+/**
+ * 檢查 token 是否存在
+ * @throws Error 如果 token 不存在
+ */
+function ensureToken(): string {
+  if (!storeRef) {
+    throw new Error('[HTTP] Store reference not set. Please call setStoreRef() first.');
+  }
+
+  const state = storeRef.getState();
+  const token = state.auth?.accessToken;
+  console.log("🚀 ~ ensureToken ~ token:", token)
+
+  if (!token) {
+    throw new Error('[HTTP] No authentication token available. Please login first.');
+  }
+
+  return token;
+}
+
+/**
+ * 需要認證的 HTTP 方法
+ * 這些方法會在發送請求前檢查 token 是否存在
+ */
+export const httpClientWithAuth = {
+  /**
+   * GET 請求（需要 token）
+   * @throws Error 如果 token 不存在
+   */
+  getWithToken: <T = any>(url: string, config?: any) => {
+    ensureToken(); // 確保 token 存在
+    return httpClient.get<T>(url, config);
+  },
+
+  /**
+   * POST 請求（需要 token）
+   * @throws Error 如果 token 不存在
+   */
+  postWithToken: <T = any>(url: string, data?: any, config?: any) => {
+    ensureToken();
+    return httpClient.post<T>(url, data, config);
+  },
+
+  /**
+   * PUT 請求（需要 token）
+   * @throws Error 如果 token 不存在
+   */
+  putWithToken: <T = any>(url: string, data?: any, config?: any) => {
+    ensureToken();
+    return httpClient.put<T>(url, data, config);
+  },
+
+  /**
+   * PATCH 請求（需要 token）
+   * @throws Error 如果 token 不存在
+   */
+  patchWithToken: <T = any>(url: string, data?: any, config?: any) => {
+    ensureToken();
+    return httpClient.patch<T>(url, data, config);
+  },
+
+  /**
+   * DELETE 請求（需要 token）
+   * @throws Error 如果 token 不存在
+   */
+  deleteWithToken: <T = any>(url: string, config?: any) => {
+    ensureToken();
+    return httpClient.delete<T>(url, config);
+  },
+};
 
 export default httpClient;
 
