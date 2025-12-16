@@ -49,7 +49,7 @@ function HomeTabs() {
         component={WalletScreen}
         options={{
           title: '錢包',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="wallet.pass.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol name="wallet-outline" size={28} color={color} />,
         }}
       />
       <Tab.Screen
@@ -57,7 +57,7 @@ function HomeTabs() {
         component={TradeScreen}
         options={{
           title: '交易',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="arrow.left.arrow.right" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol name="swap-horizontal-outline" size={28} color={color} />,
         }}
       />
       <Tab.Screen
@@ -65,7 +65,7 @@ function HomeTabs() {
         component={OrdersScreen}
         options={{
           title: '掛單',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.clipboard.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol name="clipboard-outline" size={28} color={color} />,
         }}
       />
       <Tab.Screen
@@ -73,7 +73,7 @@ function HomeTabs() {
         component={OrderListScreen}
         options={{
           title: '訂單',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="doc.text.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol name="document-text-outline" size={28} color={color} />,
         }}
       />
       <Tab.Screen
@@ -81,7 +81,7 @@ function HomeTabs() {
         component={ProfileScreen}
         options={{
           title: '我',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol name="person-outline" size={28} color={color} />,
         }}
       />
     </Tab.Navigator>
