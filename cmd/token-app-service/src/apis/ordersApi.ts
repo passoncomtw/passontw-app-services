@@ -1,4 +1,4 @@
-import { httpClientWithAuth } from './httpClient';
+import httpClient, { httpClientWithAuth } from './httpClient';
 import type { ApiResponse } from './authApi';
 
 /**
@@ -54,6 +54,26 @@ export interface UserPendingOrdersResponse {
 }
 
 /**
+ * 掛單列表回應格式（分頁）
+ */
+export interface PendingOrderListResponse {
+  rows: PendingOrder[];
+  page: number;
+  size: number;
+  total: number;
+}
+
+/**
+ * 掛單列表查詢參數
+ */
+export interface GetPendingOrdersParams {
+  type?: number; // 0: 買幣, 1: 賣幣
+  balance?: number; // 餘額搜尋
+  size?: number; // 每頁筆數
+  page?: number; // 頁碼
+}
+
+/**
  * 建立掛單請求
  */
 export interface CreatePendingOrderRequest {
@@ -91,5 +111,14 @@ export const ordersApi = {
    */
   deletePendingOrder: async (orderId: string): Promise<void> => {
     await httpClientWithAuth.deleteWithToken(`/pending/orders/${orderId}`);
+  },
+
+  /**
+   * 取得掛單列表（公開API，無需認證）
+   * 可依類型和餘額篩選，支援分頁
+   */
+  getPendingOrdersList: async (params?: GetPendingOrdersParams): Promise<PendingOrderListResponse> => {
+    const response = await httpClient.get<ApiResponse<PendingOrderListResponse>>('/pending/orders', { params });
+    return response.data.data;
   },
 };

@@ -30,26 +30,26 @@ function* loginSaga(action: PayloadAction<LoginCredentials>) {
     // 使用 httpClient 呼叫登入 API
     const data: LoginData = yield call(authApi.login, action.payload);
 
-    logger.info('登入成功', {
-      userId: data.user.id,
-      userName: data.user.name,
-      account: data.user.account,
+      logger.info('登入成功', {
+        userId: data.user.id,
+        userName: data.user.name,
+        account: data.user.account,
       bankCardsCount: data.user.bankCards?.length || 0,
-    });
+      });
 
     // 儲存 token 到 AsyncStorage
-    if (data.access_token) {
+      if (data.access_token) {
       yield call([AsyncStorage, 'setItem'], 'authToken', data.access_token);
       yield call([AsyncStorage, 'setItem'], 'expireIn', data.expireIn.toString());
       yield call([AsyncStorage, 'setItem'], 'user', JSON.stringify(data.user));
-    }
+      }
 
-    // Dispatch loginSuccess（更新 Redux State）
-    yield put(loginSuccess({
-      user: data.user,
-      accessToken: data.access_token,
-      expireIn: data.expireIn,
-    }));
+      // Dispatch loginSuccess（更新 Redux State）
+      yield put(loginSuccess({
+        user: data.user,
+        accessToken: data.access_token,
+        expireIn: data.expireIn,
+      }));
 
     // 清除舊的掛單資料
     yield put(fetchOrdersSuccess({ buy: null, sell: null }));

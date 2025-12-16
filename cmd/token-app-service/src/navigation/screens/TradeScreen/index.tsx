@@ -3,109 +3,67 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, StatusBar } from 'react-native';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { View, Text, StyleSheet, ScrollView, Pressable, StatusBar, ActivityIndicator } from 'react-native';
+import { useRoute, useNavigation, RouteProp, useFocusEffect } from '@react-navigation/native';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchBuyOrdersRequest, fetchSellOrdersRequest } from '../../store/actions/marketActions';
+import type { PendingOrder } from '@/apis/ordersApi';
+import logger from '@pkg/logger';
 
 type TradeScreenRouteProp = RouteProp<{ Trade: { initialTab?: 'buy' | 'sell' } }, 'Trade'>;
 
-interface Transaction {
+/**
+ * 將 API 掛單資料轉換為 UI 顯示格式
+ */
+interface TransactionUI {
   id: string;
   userName: string;
-  isOnline: boolean;
-  lastSeen?: string;
   amount: number;
+  balance: number;
   price: number;
   minLimit: number;
   maxLimit: number;
   paymentMethod: string;
-  isVerified: boolean;
   successRate: number;
   transactionCount: number;
-  badge?: 'fast' | 'trusted';
+  bankName?: string;
 }
 
-// 模擬交易資料 - 買入
-const mockBuyTransactions: Transaction[] = [
-  {
-    id: '1',
-    userName: '張三',
-    isOnline: true,
-    amount: 5000,
-    price: 1.00,
-    minLimit: 100,
-    maxLimit: 5000,
-    paymentMethod: '銀行卡',
-    isVerified: true,
-    successRate: 98,
-    transactionCount: 156,
-    badge: 'fast',
-  },
-  {
-    id: '2',
-    userName: '李四',
-    isOnline: false,
-    lastSeen: '5分鐘前',
-    amount: 8000,
-    price: 1.00,
-    minLimit: 500,
-    maxLimit: 8000,
-    paymentMethod: '銀行卡',
-    isVerified: true,
-    successRate: 95,
-    transactionCount: 89,
-  },
-  {
-    id: '3',
-    userName: '王五',
-    isOnline: true,
-    amount: 3000,
-    price: 1.00,
-    minLimit: 200,
-    maxLimit: 3000,
-    paymentMethod: '銀行卡',
-    isVerified: true,
-    successRate: 100,
-    transactionCount: 234,
-    badge: 'trusted',
-  },
-];
+function mapOrderToTransaction(order: PendingOrder): TransactionUI {
+  // 計算成交率
+  const totalCount = (order.doneCount || 0) + (order.cancelCount || 0);
+  const successRate = totalCount > 0 ? Math.round(((order.doneCount || 0) / totalCount) * 100) : 0;
 
-// 模擬交易資料 - 賣出
-const mockSellTransactions: Transaction[] = [
-  {
-    id: '4',
-    userName: '趙六',
-    isOnline: true,
-    amount: 6000,
-    price: 1.00,
-    minLimit: 100,
-    maxLimit: 6000,
-    paymentMethod: '銀行卡',
-    isVerified: true,
-    successRate: 97,
-    transactionCount: 123,
-    badge: 'fast',
-  },
-  {
-    id: '5',
-    userName: '孫七',
-    isOnline: true,
-    amount: 10000,
-    price: 1.00,
-    minLimit: 500,
-    maxLimit: 10000,
-    paymentMethod: '銀行卡',
-    isVerified: true,
-    successRate: 99,
-    transactionCount: 267,
-    badge: 'trusted',
-  },
-];
+  return {
+    id: order.id,
+    userName: order.user?.name || '匿名用戶',
+    amount: order.amount,
+    balance: order.balance,
+    price: 1.00, // 固定匯率 1:1
+    minLimit: order.minAmount,
+    maxLimit: order.balance, // 使用剩餘餘額作為最大限額
+    paymentMethod: order.bankcard?.bank?.bankName || '銀行卡',
+    successRate,
+    transactionCount: order.doneCount || 0,
+    bankName: order.bankcard?.bank?.bankName,
+  };
+}
 
 export default function TradeScreen() {
   const route = useRoute<TradeScreenRouteProp>();
   const navigation = useNavigation();
+  const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('buy');
+
+  // 從 Redux 取得市場資料
+  const {
+    sellOrders,      // 賣幣掛單（我要買時顯示）
+    sellOrdersLoading,
+    sellOrdersError,
+    buyOrders,       // 買幣掛單（我要賣時顯示）
+    buyOrdersLoading,
+    buyOrdersError,
+  } = useAppSelector((state) => state.market);
 
   // 接收從其他頁面傳來的 initialTab 參數
   useEffect(() => {
@@ -114,8 +72,27 @@ export default function TradeScreen() {
     }
   }, [route.params?.initialTab]);
 
+  // 當頁面聚焦或 tab 切換時，取得對應的掛單列表
+  useFocusEffect(
+    React.useCallback(() => {
+      logger.info('TradeScreen - 取得掛單列表', { activeTab });
+      if (activeTab === 'buy') {
+        // 我要買 → 取得賣幣掛單 (type=1)
+        dispatch(fetchSellOrdersRequest({ size: 20, page: 1 }));
+      } else {
+        // 我要賣 → 取得買幣掛單 (type=0)
+        dispatch(fetchBuyOrdersRequest({ size: 20, page: 1 }));
+      }
+    }, [dispatch, activeTab])
+  );
+
   // 根據 tab 選擇資料
-  const transactions = activeTab === 'buy' ? mockBuyTransactions : mockSellTransactions;
+  const orders = activeTab === 'buy' ? sellOrders : buyOrders;
+  const loading = activeTab === 'buy' ? sellOrdersLoading : buyOrdersLoading;
+  const error = activeTab === 'buy' ? sellOrdersError : buyOrdersError;
+
+  // 轉換為 UI 格式
+  const transactions = orders.map(mapOrderToTransaction);
 
   const formatNumber = (num: number) => {
     return num.toLocaleString('zh-TW');
@@ -125,40 +102,21 @@ export default function TradeScreen() {
     // TODO: 實作搜尋功能
   };
 
-  const handleTransactionPress = (transaction: Transaction) => {
-    if (activeTab === 'buy') {
-      // 導航到購買 e 幣頁面
-      navigation.navigate('CreateOrderBuy', {
-        sellerName: transaction.userName,
-        minAmount: transaction.minLimit,
-        maxAmount: transaction.maxLimit,
-        price: transaction.price,
-        paymentMethod: transaction.paymentMethod,
-        paymentTimeout: 15, // 預設 15 分鐘
-      });
-    } else {
-      // 導航到出售 e 幣頁面
-      navigation.navigate('CreateOrderSell', {
-        buyerName: transaction.userName,
-        minAmount: transaction.minLimit,
-        maxAmount: transaction.maxLimit,
-        price: transaction.price,
-        paymentMethod: transaction.paymentMethod,
-        paymentTimeout: 15, // 預設 15 分鐘
-      });
-    }
-  };
+  const handleTransactionPress = (transaction: TransactionUI) => {
+    logger.info('TradeScreen - 點擊掛單', {
+      orderId: transaction.id,
+      activeTab,
+      userName: transaction.userName,
+    });
 
-  // 根據 tab 和 badge 顯示不同的標籤文字
-  const getBadgeText = (badge?: 'fast' | 'trusted') => {
-    if (!badge) return null;
-    if (badge === 'fast') {
-      return activeTab === 'buy' ? '⚡ 快速放行' : '⚡ 快速收款';
+    // TODO: 導航到確認訂單頁面
+    if (activeTab === 'buy') {
+      // 導航到購買確認頁面
+      logger.info('TradeScreen - 導航到購買確認頁面');
+    } else {
+      // 導航到出售確認頁面
+      logger.info('TradeScreen - 導航到出售確認頁面');
     }
-    if (badge === 'trusted') {
-      return '⭐ 信譽優良';
-    }
-    return null;
   };
 
   return (
@@ -193,68 +151,93 @@ export default function TradeScreen() {
         </Pressable>
       </View>
 
-      {/* 交易列表 */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.transactionList}>
-          {transactions.map((transaction) => (
-            <Pressable
-              key={transaction.id}
-              style={({ pressed }) => [
-                styles.transactionItem,
-                pressed && styles.transactionItemPressed,
-              ]}
-              onPress={() => handleTransactionPress(transaction)}
-            >
-              {/* 頂部：用戶名 + 數量 */}
-              <View style={styles.transactionHeader}>
-                <View style={styles.userInfo}>
-                  <Text style={styles.userName}>{transaction.userName}</Text>
-                  {transaction.isOnline ? (
-                    <View style={styles.statusOnline}>
-                      <Text style={styles.statusText}>在線</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.statusOffline}>
-                      <Text style={styles.statusText}>{transaction.lastSeen}</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.transactionAmount}>
-                  {formatNumber(transaction.amount)} E幣
-                </Text>
-              </View>
-
-              {/* 單價 + 限額 */}
-              <View style={styles.transactionInfo}>
-                <Text style={styles.infoText}>單價: ¥{transaction.price.toFixed(2)}</Text>
-                <Text style={styles.infoText}>
-                  限額: {formatNumber(transaction.minLimit)}-{formatNumber(transaction.maxLimit)}
-                </Text>
-              </View>
-
-              {/* 支付方式 + 認證 */}
-              <View style={styles.transactionInfo}>
-                <Text style={styles.infoText}>💳 {transaction.paymentMethod}</Text>
-                {transaction.isVerified && (
-                  <Text style={styles.verifiedText}>✓ 已認證</Text>
-                )}
-              </View>
-
-              {/* 成交率 + 標籤 */}
-              <View style={[styles.transactionInfo, styles.transactionFooter]}>
-                <Text style={styles.statsText}>
-                  成交率: {transaction.successRate}% | 成交次數: {transaction.transactionCount}
-                </Text>
-                {getBadgeText(transaction.badge) && (
-                  <Text style={transaction.badge === 'fast' ? styles.badgeFast : styles.badgeTrusted}>
-                    {getBadgeText(transaction.badge)}
-                  </Text>
-                )}
-              </View>
-            </Pressable>
-          ))}
+      {/* 載入中狀態 */}
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>載入中...</Text>
         </View>
-      </ScrollView>
+      )}
+
+      {/* 錯誤訊息 */}
+      {error && !loading && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable
+            style={styles.retryButton}
+            onPress={() => {
+              if (activeTab === 'buy') {
+                dispatch(fetchSellOrdersRequest({ size: 20, page: 1 }));
+              } else {
+                dispatch(fetchBuyOrdersRequest({ size: 20, page: 1 }));
+              }
+            }}
+          >
+            <Text style={styles.retryButtonText}>重試</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* 空狀態 */}
+      {!loading && !error && transactions.length === 0 && (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>😔</Text>
+          <Text style={styles.emptyTitle}>暫無掛單</Text>
+          <Text style={styles.emptySubtitle}>
+            {activeTab === 'buy' ? '目前沒有賣幣掛單' : '目前沒有買幣掛單'}
+          </Text>
+        </View>
+      )}
+
+      {/* 交易列表 */}
+      {!loading && !error && transactions.length > 0 && (
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.transactionList}>
+            {transactions.map((transaction) => (
+              <Pressable
+                key={transaction.id}
+                style={({ pressed }) => [
+                  styles.transactionItem,
+                  pressed && styles.transactionItemPressed,
+                ]}
+                onPress={() => handleTransactionPress(transaction)}
+              >
+                {/* 頂部：用戶名 + 剩餘數量 */}
+                <View style={styles.transactionHeader}>
+                  <View style={styles.userInfo}>
+                    <Text style={styles.userName}>{transaction.userName}</Text>
+                  </View>
+                  <Text style={styles.transactionAmount}>
+                    剩餘 {formatNumber(transaction.balance)} E幣
+                  </Text>
+                </View>
+
+                {/* 單價 + 限額 */}
+                <View style={styles.transactionInfo}>
+                  <Text style={styles.infoText}>單價: ¥{transaction.price.toFixed(2)}</Text>
+                  <Text style={styles.infoText}>
+                    限額: {formatNumber(transaction.minLimit)}-{formatNumber(transaction.maxLimit)}
+                  </Text>
+                </View>
+
+                {/* 支付方式 */}
+                <View style={styles.transactionInfo}>
+                  <Text style={styles.infoText}>💳 {transaction.paymentMethod}</Text>
+                </View>
+
+                {/* 成交統計 */}
+                {transaction.transactionCount > 0 && (
+                  <View style={[styles.transactionInfo, styles.transactionFooter]}>
+                    <Text style={styles.statsText}>
+                      成交率: {transaction.successRate}% | 成交次數: {transaction.transactionCount}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            ))}
+          </View>
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -401,5 +384,60 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#2196F3',
     fontWeight: '500',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#F44336',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: '#007AFF',
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptyText: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });
