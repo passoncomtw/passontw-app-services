@@ -109,14 +109,24 @@ export default function TradeScreen() {
       userName: transaction.userName,
     });
 
-    // TODO: 導航到確認訂單頁面
-    if (activeTab === 'buy') {
-      // 導航到購買確認頁面
-      logger.info('TradeScreen - 導航到購買確認頁面');
-    } else {
-      // 導航到出售確認頁面
-      logger.info('TradeScreen - 導航到出售確認頁面');
-    }
+    // 導航到統一的確認訂單頁面
+    // activeTab 'buy' = 我要買 = 顯示賣幣掛單 = 創建買幣訂單
+    // activeTab 'sell' = 我要賣 = 顯示買幣掛單 = 創建賣幣訂單
+    (navigation as any).navigate('ConfirmOrder', {
+      type: activeTab, // 'buy' | 'sell'
+      orderId: transaction.id,
+      userName: transaction.userName,
+      availableAmount: transaction.balance, // 使用剩餘數量
+      minAmount: transaction.minLimit,
+      maxAmount: transaction.maxLimit,
+      price: transaction.price,
+      bankName: transaction.bankName || transaction.paymentMethod,
+    });
+
+    logger.info('TradeScreen - 導航到確認訂單頁面', {
+      type: activeTab,
+      orderId: transaction.id,
+    });
   };
 
   return (

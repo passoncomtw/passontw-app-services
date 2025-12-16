@@ -11,8 +11,7 @@ import OrdersScreen from './screens/OrdersScreen';
 import OrderListScreen from './screens/OrderListScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import CreateOrderScreen from './screens/CreateOrderScreen';
-import ConfirmOrderBuyScreen from './screens/ConfirmOrderBuyScreen';
-import ConfirmOrderSellScreen from './screens/ConfirmOrderSellScreen';
+import ConfirmOrderScreen from './screens/ConfirmOrderScreen';
 import NotFound from './screens/NotFoundScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
@@ -121,12 +120,8 @@ function AuthenticatedStack() {
         component={CreateOrderScreen}
       />
       <Stack.Screen 
-        name="ConfirmOrderBuy" 
-        component={ConfirmOrderBuyScreen}
-      />
-      <Stack.Screen 
-        name="ConfirmOrderSell" 
-        component={ConfirmOrderSellScreen}
+        name="ConfirmOrder" 
+        component={ConfirmOrderScreen}
       />
       <Stack.Screen 
         name="NotFound" 
