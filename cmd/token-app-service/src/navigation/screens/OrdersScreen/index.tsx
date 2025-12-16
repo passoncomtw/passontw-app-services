@@ -10,6 +10,7 @@ import { fetchPendingOrdersRequest } from '../../store/actions/ordersActions';
 import EmptyState from './components/EmptyState';
 import OrdersList, { PendingOrder } from './components/OrdersList';
 import type { PendingOrder as ApiPendingOrder } from '@/apis/ordersApi';
+import logger from '@pkg/logger';
 
 /**
  * 將 API 返回的掛單資料轉換為組件需要的格式
@@ -35,10 +36,10 @@ export default function OrdersScreen() {
   // 將 buy 和 sell 轉換為組件格式的陣列
   const orders = useMemo(() => {
     const result: PendingOrder[] = [];
-    if (buy) {
+    if (buy && buy.id) {
       result.push(mapApiOrderToComponentOrder(buy, 'buy'));
     }
-    if (sell) {
+    if (sell && sell.id) {
       result.push(mapApiOrderToComponentOrder(sell, 'sell'));
     }
     return result;
@@ -47,14 +48,24 @@ export default function OrdersScreen() {
   // 當頁面獲得焦點時，重新取得掛單列表
   useFocusEffect(
     React.useCallback(() => {
+      logger.info('OrdersScreen - 頁面聚焦，取得掛單列表');
       dispatch(fetchPendingOrdersRequest());
     }, [dispatch])
   );
 
   // 檢查是否可以新增掛單（最多一買一賣）
-  const canAddBuy = !buy;
-  const canAddSell = !sell;
+  // 確保檢查 id 屬性，避免空對象被誤認為有掛單
+  const canAddBuy = !buy || !buy.id;
+  const canAddSell = !sell || !sell.id;
   const canAddOrder = canAddBuy || canAddSell;
+
+  logger.info('OrdersScreen - 掛單狀態', {
+    hasBuyId: buy?.id,
+    hasSellId: sell?.id,
+    canAddBuy,
+    canAddSell,
+    canAddOrder,
+  });
 
   const handleCreateOrder = () => {
     if (!canAddOrder) {

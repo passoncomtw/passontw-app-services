@@ -27,7 +27,6 @@ function* fetchBankCardsSaga(): SagaIterator {
   try {
     // 步驟 2: 使用 httpClient 呼叫取得銀行卡 API
     const bankCards = yield call(bankCardsApi.getBankCards);
-    console.log("🚀 ~ fetchBankCardsSaga ~ bankCards:", bankCards)
 
     logger.info('取得銀行卡列表成功', {
       count: bankCards.length,

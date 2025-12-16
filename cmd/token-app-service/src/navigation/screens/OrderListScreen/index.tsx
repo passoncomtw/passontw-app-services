@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, StatusBar } from 'react-native';
 import OrderItem, { Order } from './components/OrderItem';
+import logger from '@pkg/logger';
 
 type OrderCategory = 'ongoing' | 'completed';
 type OngoingTab = 'pending_payment' | 'pending_release' | 'dispute';
@@ -103,7 +104,7 @@ export default function OrderListScreen() {
 
   const handleOrderPress = (orderId: string) => {
     // TODO: 導航到訂單詳情頁面
-    console.log('查看訂單:', orderId);
+    logger.info('OrderListScreen - 查看訂單', { orderId });
   };
 
   // 根據分類和 tab 顯示對應的訂單

@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import logger from '@pkg/logger';
 
 // 使用 Vite 環境變數，預設指向本機 API
 const baseURL =
@@ -20,15 +21,20 @@ httpClient.interceptors.request.use(
     const token = localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      logger.debug('HTTP Request - Authorization header set', {
+        url: config.url,
+        method: config.method,
+        hasToken: !!token,
+      });
     }
     
     // 記錄請求
-    console.log(`[HTTP] ${config.method?.toUpperCase()} ${config.url}`);
+    logger.info(`HTTP ${config.method?.toUpperCase()} ${config.url}`);
     
     return config;
   },
   (error) => {
-    console.error('[HTTP] Request error:', error);
+    logger.error('HTTP Request error', { error });
     return Promise.reject(error);
   }
 );
@@ -37,12 +43,16 @@ httpClient.interceptors.request.use(
 httpClient.interceptors.response.use(
   (response: AxiosResponse) => {
     // 記錄成功回應
-    console.log(`[HTTP] ${response.status} ${response.config.url}`);
+    logger.info(`HTTP ${response.status} ${response.config.url}`);
     return response;
   },
   (error) => {
     // 統一錯誤處理
-    console.error('[HTTP] Response error:', error);
+    logger.error('HTTP Response error', {
+      status: error.response?.status,
+      url: error.config?.url,
+      message: error.message,
+    });
 
     const isAuthLogin =
       typeof error?.config?.url === 'string' &&
@@ -50,6 +60,9 @@ httpClient.interceptors.response.use(
 
     if (error.response?.status === 401 && !isAuthLogin) {
       // 其他 API 未授權時清除 token 並回登入頁
+      logger.warn('HTTP 401 Unauthorized - Redirecting to login', {
+        url: error.config?.url,
+      });
       localStorage.removeItem('authToken');
       window.location.href = '/login';
     }

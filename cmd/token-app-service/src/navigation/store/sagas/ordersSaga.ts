@@ -58,7 +58,6 @@ function* fetchPendingOrdersSaga(): SagaIterator {
  */
 function* createPendingOrderSaga(action: PayloadAction<CreatePendingOrderPayload>): SagaIterator {
   const { data, onSuccess, onError } = action.payload;
-  console.log("🚀 ~ createPendingOrderSaga ~ data:", data)
 
   // 步驟 1: 開始建立掛單（設置 creating 狀態）
   yield put(createOrderStart());

@@ -72,6 +72,33 @@ yarn install
 npm install
 ```
 
+### 環境變數設定
+
+在專案根目錄建立 `.env` 檔案：
+
+```bash
+# API Base URL
+VITE_API_BASE_URL=https://pos-api.passon.tw
+
+# Log Level (DEBUG, INFO, WARN, ERROR, NONE)
+# DEBUG: 顯示所有日誌（開發環境推薦）
+# INFO: 顯示一般資訊、警告、錯誤
+# WARN: 只顯示警告和錯誤
+# ERROR: 只顯示錯誤
+# NONE: 不顯示任何日誌
+LOG_LEVEL=DEBUG
+```
+
+**日誌級別說明：**
+
+| 級別 | 顯示內容 | 適用場景 |
+|------|----------|----------|
+| `DEBUG` | 所有日誌（debug, info, warn, error） | 開發環境（預設） |
+| `INFO` | 一般資訊、警告、錯誤 | 測試環境 |
+| `WARN` | 警告和錯誤 | 預發佈環境 |
+| `ERROR` | 僅錯誤 | 生產環境 |
+| `NONE` | 不顯示任何日誌 | 效能測試 |
+
 ### 開發模式
 
 ```bash

@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import logger from '@pkg/logger';
 
 // 使用 Expo 環境變數，從 .env 讀取 BASE_URL
 // Expo 需要使用 EXPO_PUBLIC_ 前綴才能在 JavaScript 中使用
@@ -45,20 +46,24 @@ httpClient.interceptors.request.use(
 
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
-          console.log("🚀 ~ config.headers.Authorization:", config.headers.Authorization)
+          logger.debug('HTTP Request - Authorization header set', {
+            url: config.url,
+            method: config.method,
+            hasToken: !!token,
+          });
         }
       }
     } catch (error) {
-      console.error('[HTTP] Failed to get token from store:', error);
+      logger.error('HTTP Request - Failed to get token from store', { error });
     }
     
     // 記錄請求
-    console.log(`[HTTP] ${config.method?.toUpperCase()} ${config.url}`);
+    logger.info(`HTTP ${config.method?.toUpperCase()} ${config.url}`);
     
     return config;
   },
   (error) => {
-    console.error('[HTTP] Request error:', error);
+    logger.error('HTTP Request error', { error });
     return Promise.reject(error);
   }
 );
@@ -67,12 +72,16 @@ httpClient.interceptors.request.use(
 httpClient.interceptors.response.use(
   (response: AxiosResponse) => {
     // 記錄成功回應
-    console.log(`[HTTP] ${response.status} ${response.config.url}`);
+    logger.info(`HTTP ${response.status} ${response.config.url}`);
     return response;
   },
   (error) => {
     // 統一錯誤處理
-    console.error('[HTTP] Response error:', error);
+    logger.error('HTTP Response error', {
+      status: error.response?.status,
+      url: error.config?.url,
+      message: error.message,
+    });
 
     const isAuthLogin =
       typeof error?.config?.url === 'string' &&
@@ -81,7 +90,9 @@ httpClient.interceptors.response.use(
 
     if (error.response?.status === 401 && !isAuthLogin) {
       // 未授權時：導航到登入頁
-      console.warn('[HTTP] 401 Unauthorized - Redirecting to login');
+      logger.warn('HTTP 401 Unauthorized - Redirecting to login', {
+        url: error.config?.url,
+      });
 
       if (navigationRef) {
         import('@react-navigation/native').then(({ CommonActions }) => {
@@ -91,8 +102,8 @@ httpClient.interceptors.response.use(
               routes: [{ name: 'Login' }],
             })
           );
-        }).catch((error) => {
-          console.error('[HTTP] Failed to navigate to login:', error);
+        }).catch((navError) => {
+          logger.error('HTTP Failed to navigate to login', { error: navError });
         });
       }
     }
@@ -107,15 +118,23 @@ httpClient.interceptors.response.use(
  */
 function ensureToken(): string {
   if (!storeRef) {
-    throw new Error('[HTTP] Store reference not set. Please call setStoreRef() first.');
+    const error = new Error('[HTTP] Store reference not set. Please call setStoreRef() first.');
+    logger.error('ensureToken failed', { error: error.message });
+    throw error;
   }
 
   const state = storeRef.getState();
   const token = state.auth?.accessToken;
-  console.log("🚀 ~ ensureToken ~ token:", token)
+  
+  logger.debug('ensureToken check', {
+    hasToken: !!token,
+    isAuthenticated: state.auth?.isAuthenticated,
+  });
 
   if (!token) {
-    throw new Error('[HTTP] No authentication token available. Please login first.');
+    const error = new Error('[HTTP] No authentication token available. Please login first.');
+    logger.error('ensureToken failed', { error: error.message });
+    throw error;
   }
 
   return token;

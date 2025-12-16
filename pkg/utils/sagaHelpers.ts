@@ -149,6 +149,8 @@ export interface FetchAPIOptions<TPayload = any, TResponse = any> {
  * 
  * @example
  * ```typescript
+ * import logger from '@pkg/logger';
+ * 
  * function* loginSaga(action: PayloadAction<LoginCredentials>) {
  *   yield call(fetchAPIResult, {
  *     apiResult: loginApi,
@@ -157,10 +159,10 @@ export interface FetchAPIOptions<TPayload = any, TResponse = any> {
  *     message: '登入成功',
  *     tokenSelector: (state) => state.auth.accessToken,
  *     onSuccess: (data) => {
- *       console.log('登入成功:', data);
+ *       logger.info('登入成功', data);
  *     },
  *     onError: (error) => {
- *       console.error('登入失敗:', error);
+ *       logger.error('登入失敗', error);
  *     },
  *   });
  * }

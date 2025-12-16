@@ -1,6 +1,7 @@
 /**
  * Logger 模組
  * 提供統一的日誌記錄功能，支持不同層級的日誌輸出
+ * 可通過環境變數 LOG_LEVEL 或 EXPO_PUBLIC_LOG_LEVEL 設定日誌級別
  */
 
 /**
@@ -24,10 +25,36 @@ interface LoggerConfig {
 }
 
 /**
+ * 從環境變數讀取日誌級別
+ */
+const getLogLevelFromEnv = (): LogLevel => {
+  // 優先使用 EXPO_PUBLIC_LOG_LEVEL（Expo 環境）
+  // 其次使用 LOG_LEVEL（Node.js 環境）
+  const envLevel = process.env.EXPO_PUBLIC_LOG_LEVEL || process.env.LOG_LEVEL;
+  
+  if (!envLevel) {
+    // 如果沒有設定，則根據環境決定
+    return __DEV__ ? LogLevel.DEBUG : LogLevel.WARN;
+  }
+
+  // 將字串轉換為 LogLevel
+  const levelMap: Record<string, LogLevel> = {
+    'DEBUG': LogLevel.DEBUG,
+    'INFO': LogLevel.INFO,
+    'WARN': LogLevel.WARN,
+    'ERROR': LogLevel.ERROR,
+    'NONE': LogLevel.NONE,
+  };
+
+  const upperEnvLevel = envLevel.toUpperCase();
+  return levelMap[upperEnvLevel] ?? (__DEV__ ? LogLevel.DEBUG : LogLevel.WARN);
+};
+
+/**
  * 默認配置
  */
 const defaultConfig: LoggerConfig = {
-  level: __DEV__ ? LogLevel.DEBUG : LogLevel.WARN,
+  level: getLogLevelFromEnv(),
   enableTimestamp: true,
   enableColors: true,
 };
@@ -40,18 +67,20 @@ let currentConfig: LoggerConfig = { ...defaultConfig };
 /**
  * 日誌顏色映射（僅用於終端輸出）
  */
-const levelColors = {
+const levelColors: Record<LogLevel, string> = {
   [LogLevel.DEBUG]: '🔍',
   [LogLevel.INFO]: 'ℹ️',
   [LogLevel.WARN]: '⚠️',
   [LogLevel.ERROR]: '❌',
+  [LogLevel.NONE]: '',
 };
 
-const levelNames = {
+const levelNames: Record<LogLevel, string> = {
   [LogLevel.DEBUG]: 'DEBUG',
   [LogLevel.INFO]: 'INFO',
   [LogLevel.WARN]: 'WARN',
   [LogLevel.ERROR]: 'ERROR',
+  [LogLevel.NONE]: 'NONE',
 };
 
 /**
@@ -157,6 +186,23 @@ export const logger = {
   },
 
   /**
+   * 從字串設置日誌層級
+   */
+  setLevelByName: (levelName: string) => {
+    const levelMap: Record<string, LogLevel> = {
+      'DEBUG': LogLevel.DEBUG,
+      'INFO': LogLevel.INFO,
+      'WARN': LogLevel.WARN,
+      'ERROR': LogLevel.ERROR,
+      'NONE': LogLevel.NONE,
+    };
+    const level = levelMap[levelName.toUpperCase()];
+    if (level !== undefined) {
+      currentConfig.level = level;
+    }
+  },
+
+  /**
    * 設置配置
    */
   configure: (config: Partial<LoggerConfig>) => {
@@ -174,6 +220,13 @@ export const logger = {
    * 獲取當前配置
    */
   getConfig: () => ({ ...currentConfig }),
+
+  /**
+   * 獲取當前日誌級別名稱
+   */
+  getCurrentLevelName: (): string => {
+    return levelNames[currentConfig.level] || 'UNKNOWN';
+  },
 };
 
 /**
