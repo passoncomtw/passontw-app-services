@@ -34,7 +34,7 @@ httpClient.interceptors.request.use(
     return config;
   },
   (error) => {
-    logger.error('HTTP Request error', { error });
+    logger.warn('HTTP Request error', { error });
     return Promise.reject(error);
   }
 );
@@ -48,7 +48,7 @@ httpClient.interceptors.response.use(
   },
   (error) => {
     // 統一錯誤處理
-    logger.error('HTTP Response error', {
+    logger.warn('HTTP Response error', {
       status: error.response?.status,
       url: error.config?.url,
       message: error.message,

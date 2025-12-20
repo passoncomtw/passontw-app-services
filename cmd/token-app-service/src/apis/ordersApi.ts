@@ -85,6 +85,30 @@ export interface CreatePendingOrderRequest {
   transactionMinutes: number; // 交易時限（分鐘）
 }
 
+/**
+ * 訂單資料結構
+ */
+export interface Order {
+  id: string;
+  orderId: string; // 掛單 ID
+  userId: number;
+  amount: number;
+  beneficiaryBankcardId: number;
+  status: number; // 訂單狀態
+  createdAt: string;
+  updatedAt?: string;
+}
+
+/**
+ * 建立訂單請求
+ */
+export interface CreateOrderRequest {
+  orderId: string; // 掛單 ID
+  amount: number; // 交易金額
+  beneficiaryBankcardId: number; // 受益人銀行卡 ID
+  transactionCode: string; // 交易密碼
+}
+
 export const ordersApi = {
   /**
    * 取得使用者自己建立的掛單列表
@@ -119,6 +143,16 @@ export const ordersApi = {
    */
   getPendingOrdersList: async (params?: GetPendingOrdersParams): Promise<PendingOrderListResponse> => {
     const response = await httpClient.get<ApiResponse<PendingOrderListResponse>>('/pending/orders', { params });
+    return response.data.data;
+  },
+
+  /**
+   * 建立訂單
+   * 從掛單建立一筆新的訂單
+   * 需要認證 token
+   */
+  createOrder: async (data: CreateOrderRequest): Promise<Order> => {
+    const response = await httpClientWithAuth.postWithToken<ApiResponse<Order>>('/orders', data);
     return response.data.data;
   },
 };

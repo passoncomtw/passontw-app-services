@@ -14,10 +14,12 @@ import {
   Alert,
   Modal,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchBankCardsRequest } from '../../store/actions/bankCardsActions';
+import { createOrderRequest } from '../../store/actions/ordersActions';
 import logger from '@pkg/logger';
 
 type ConfirmOrderRouteProp = RouteProp<
@@ -41,6 +43,7 @@ export default function ConfirmOrderScreen() {
   const route = useRoute<ConfirmOrderRouteProp>();
   const dispatch = useAppDispatch();
   const { cards: bankCards } = useAppSelector((state) => state.bankCards);
+  const { creatingOrder } = useAppSelector((state) => state.orders);
 
   const {
     type,
@@ -96,8 +99,29 @@ export default function ConfirmOrderScreen() {
     setShowBankCardModal(true);
   };
 
+  // 建立訂單成功的回調
+  const handleCreateOrderSuccess = React.useCallback((orderId: string) => {
+    logger.info('ConfirmOrderScreen - 建立訂單成功', { orderId });
+    Alert.alert('成功', `${isBuy ? '購買' : '出售'}訂單已建立！`, [
+      { 
+        text: '確定', 
+        onPress: () => {
+          // 導航回訂單列表頁面
+          (navigation as any).navigate('OrderList');
+        } 
+      },
+    ]);
+  }, [isBuy, navigation]);
+
+  // 建立訂單失敗的回調
+  const handleCreateOrderError = React.useCallback((errorMessage: string) => {
+    Alert.alert('錯誤', errorMessage);
+  }, []);
+
   // 提交訂單
   const handleSubmit = () => {
+    if (creatingOrder) return;
+
     // 驗證
     const amountNum = parseFloat(amount);
     if (!amount || isNaN(amountNum)) {
@@ -121,12 +145,12 @@ export default function ConfirmOrderScreen() {
       return;
     }
 
-    logger.info('ConfirmOrderScreen - 提交訂單', {
+    logger.info('ConfirmOrderScreen - 準備建立訂單', {
       type,
-      orderId,
+      pendingOrderId: orderId,
       amount: amountNum,
       totalPrice,
-      bankCardId: selectedBankCard.id,
+      beneficiaryBankcardId: selectedBankCard.id,
     });
 
     Alert.alert(
@@ -137,8 +161,16 @@ export default function ConfirmOrderScreen() {
         {
           text: '確定',
           onPress: () => {
-            // TODO: 調用創建訂單 API
-            logger.info('ConfirmOrderScreen - 創建訂單');
+            dispatch(createOrderRequest({
+              data: {
+                orderId, // 掛單 ID
+                amount: amountNum, // 交易金額
+                beneficiaryBankcardId: selectedBankCard.id, // 受益人銀行卡 ID
+                transactionCode: transactionPassword, // 交易密碼
+              },
+              onSuccess: handleCreateOrderSuccess,
+              onError: handleCreateOrderError,
+            }));
           },
         },
       ]
@@ -291,13 +323,19 @@ export default function ConfirmOrderScreen() {
         <Pressable 
           style={({ pressed }) => [
             styles.submitButton,
-            pressed && styles.submitButtonPressed,
+            pressed && !creatingOrder && styles.submitButtonPressed,
+            creatingOrder && styles.submitButtonDisabled,
           ]}
           onPress={handleSubmit}
+          disabled={creatingOrder}
         >
-          <Text style={styles.submitButtonText}>
-            {isBuy ? '購買E幣' : '出售E幣'}
-          </Text>
+          {creatingOrder ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.submitButtonText}>
+              {isBuy ? '購買E幣' : '出售E幣'}
+            </Text>
+          )}
         </Pressable>
       </ScrollView>
 
@@ -568,6 +606,9 @@ const styles = StyleSheet.create({
   },
   submitButtonPressed: {
     opacity: 0.9,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
   },
   submitButtonText: {
     color: '#fff',

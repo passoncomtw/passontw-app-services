@@ -13,6 +13,8 @@ interface OrdersState {
   createError: string | null; // 建立掛單錯誤
   deleting: boolean; // 刪除掛單中
   deleteError: string | null; // 刪除掛單錯誤
+  creatingOrder: boolean; // 建立訂單中
+  createOrderError: string | null; // 建立訂單錯誤
 }
 
 const initialState: OrdersState = {
@@ -24,6 +26,8 @@ const initialState: OrdersState = {
   createError: null,
   deleting: false,
   deleteError: null,
+  creatingOrder: false,
+  createOrderError: null,
 };
 
 /**
@@ -95,6 +99,22 @@ const ordersSlice = createSlice({
     clearDeleteError(state) {
       state.deleteError = null;
     },
+    // 建立訂單相關 reducers
+    createTransactionOrderStart(state) {
+      state.creatingOrder = true;
+      state.createOrderError = null;
+    },
+    createTransactionOrderSuccess(state) {
+      state.creatingOrder = false;
+      state.createOrderError = null;
+    },
+    createTransactionOrderFailure(state, action: PayloadAction<string>) {
+      state.creatingOrder = false;
+      state.createOrderError = action.payload;
+    },
+    clearCreateOrderError(state) {
+      state.createOrderError = null;
+    },
     resetOrders() {
       // 重置為初始狀態（用於登出）
       return initialState;
@@ -115,6 +135,10 @@ export const {
   deleteOrderSuccess,
   deleteOrderFailure,
   clearDeleteError,
+  createTransactionOrderStart,
+  createTransactionOrderSuccess,
+  createTransactionOrderFailure,
+  clearCreateOrderError,
   resetOrders,
 } = ordersSlice.actions;
 

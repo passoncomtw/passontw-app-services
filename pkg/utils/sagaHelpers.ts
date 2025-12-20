@@ -162,7 +162,7 @@ export interface FetchAPIOptions<TPayload = any, TResponse = any> {
  *       logger.info('登入成功', data);
  *     },
  *     onError: (error) => {
- *       logger.error('登入失敗', error);
+ *       logger.warn('登入失敗', error);
  *     },
  *   });
  * }
@@ -246,7 +246,7 @@ export default function* fetchAPIResult<TPayload = any, TResponse = any>({
       }
     }
   } catch (error: any) {
-    logger.error(`[${action}] API 錯誤`, error);
+    logger.warn(`[${action}] API 錯誤`, error);
 
     // 標準化錯誤格式
     let errorPayload: ErrorPayload;
@@ -289,6 +289,55 @@ export default function* fetchAPIResult<TPayload = any, TResponse = any>({
       }
     }
   }
+}
+
+/**
+ * 統一的錯誤處理函數
+ * 
+ * 區分業務邏輯錯誤和系統錯誤：
+ * - API 回應錯誤（如密碼錯誤、餘額不足）：使用 logger.warn
+ * - 系統錯誤（如網路異常、伺服器崩潰）：使用 logger.error
+ * 
+ * @param error - 錯誤對象
+ * @param context - 錯誤上下文（如 '登入失敗'、'建立訂單失敗'）
+ * @param additionalInfo - 額外資訊（如 orderId、userId 等）
+ * @returns 標準化的錯誤訊息
+ * 
+ * @example
+ * ```typescript
+ * try {
+ *   const data = yield call(api.login, credentials);
+ * } catch (error: any) {
+ *   const errorMessage = handleSagaError(error, '登入失敗');
+ *   yield put(loginFailure(errorMessage));
+ * }
+ * 
+ * // 或帶額外資訊
+ * const errorMessage = handleSagaError(error, '刪除掛單失敗', { orderId });
+ * ```
+ */
+export function handleSagaError(
+  error: any,
+  context: string,
+  additionalInfo?: Record<string, any>
+): string {
+  const errorMessage = error.response?.data?.message || error.message || `${context}，請稍後再試`;
+  
+  if (error.response?.data?.message) {
+    // API 回應的業務邏輯錯誤（預期內的錯誤）
+    logger.warn(`${context} - API 回應錯誤`, {
+      message: errorMessage,
+      ...additionalInfo,
+    });
+  } else {
+    // 系統錯誤（網路異常或意外錯誤）
+    logger.error(`${context} - 系統錯誤`, {
+      error: error.message || error,
+      ...additionalInfo,
+    });
+  }
+  
+  return errorMessage;
 }
 
 /**
@@ -338,7 +387,7 @@ export async function apiRequest<T = any>(
 
     return data;
   } catch (error) {
-    logger.error('API 請求異常', error);
+    logger.warn('API 請求異常', error);
 
     // 網路錯誤處理
     if (error instanceof TypeError) {

@@ -2,6 +2,7 @@ import { call, put, takeLatest } from 'redux-saga/effects';
 import { SagaIterator } from 'redux-saga';
 import { PayloadAction } from '@reduxjs/toolkit';
 import logger from '@pkg/logger';
+import { handleSagaError } from '@pkg/utils/sagaHelpers';
 import { ordersApi } from '@/apis';
 import type { GetPendingOrdersParams } from '@/apis/ordersApi';
 import { MARKET_ACTIONS } from '../actions/marketActions';
@@ -41,11 +42,7 @@ function* fetchBuyOrdersSaga(action: PayloadAction<GetPendingOrdersParams | unde
 
     yield put(fetchBuyOrdersSuccess(data));
   } catch (error: any) {
-    logger.error('取得買幣掛單列表失敗', {
-      error: error.message || error,
-    });
-
-    const errorMessage = error.response?.data?.message || error.message || '取得掛單列表失敗';
+    const errorMessage = handleSagaError(error, '取得買幣掛單列表失敗');
     yield put(fetchBuyOrdersFailure(errorMessage));
   }
 }
@@ -77,11 +74,7 @@ function* fetchSellOrdersSaga(action: PayloadAction<GetPendingOrdersParams | und
 
     yield put(fetchSellOrdersSuccess(data));
   } catch (error: any) {
-    logger.error('取得賣幣掛單列表失敗', {
-      error: error.message || error,
-    });
-
-    const errorMessage = error.response?.data?.message || error.message || '取得掛單列表失敗';
+    const errorMessage = handleSagaError(error, '取得賣幣掛單列表失敗');
     yield put(fetchSellOrdersFailure(errorMessage));
   }
 }

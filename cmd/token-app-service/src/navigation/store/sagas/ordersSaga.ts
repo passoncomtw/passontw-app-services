@@ -2,8 +2,9 @@ import { call, put, takeLatest } from 'redux-saga/effects';
 import { SagaIterator } from 'redux-saga';
 import { PayloadAction } from '@reduxjs/toolkit';
 import logger from '@pkg/logger';
+import { handleSagaError } from '@pkg/utils/sagaHelpers';
 import { ordersApi } from '@/apis';
-import { ORDERS_ACTIONS, CreatePendingOrderPayload, DeletePendingOrderPayload } from '../actions/ordersActions';
+import { ORDERS_ACTIONS, CreatePendingOrderPayload, DeletePendingOrderPayload, CreateOrderPayload } from '../actions/ordersActions';
 import {
   fetchOrdersStart,
   fetchOrdersSuccess,
@@ -14,6 +15,9 @@ import {
   deleteOrderStart,
   deleteOrderSuccess,
   deleteOrderFailure,
+  createTransactionOrderStart,
+  createTransactionOrderSuccess,
+  createTransactionOrderFailure,
 } from '../slices/ordersSlice';
 
 /**
@@ -43,12 +47,7 @@ function* fetchPendingOrdersSaga(): SagaIterator {
     // 步驟 3: 取得資料後，更新 Redux State
     yield put(fetchOrdersSuccess(ordersData));
   } catch (error: any) {
-    logger.error('取得掛單列表失敗', {
-      error: error.message || error,
-    });
-
-    // 步驟 4: 如果有錯誤，設置錯誤訊息
-    const errorMessage = error.response?.data?.message || error.message || '取得掛單列表失敗，請稍後再試';
+    const errorMessage = handleSagaError(error, '取得掛單列表失敗');
     yield put(fetchOrdersFailure(errorMessage));
   }
 }
@@ -86,16 +85,11 @@ function* createPendingOrderSaga(action: PayloadAction<CreatePendingOrderPayload
       onSuccess();
     }
   } catch (error: any) {
-    logger.error('建立掛單失敗', {
-      error: error.message || error,
-      type: data.type === 0 ? '買幣' : '賣幣',
-    });
-
-    // 步驟 6: 如果有錯誤，設置錯誤訊息
-    const errorMessage = error.response?.data?.message || error.message || '建立掛單失敗，請稍後再試';
+    const orderType = data.type === 0 ? '買幣' : '賣幣';
+    const errorMessage = handleSagaError(error, '建立掛單失敗', { type: orderType });
+    
     yield put(createOrderFailure(errorMessage));
-
-    // 步驟 7: 調用錯誤回調（如果有提供）
+    
     if (onError) {
       onError(errorMessage);
     }
@@ -133,16 +127,50 @@ function* deletePendingOrderSaga(action: PayloadAction<DeletePendingOrderPayload
       onSuccess();
     }
   } catch (error: any) {
-    logger.error('刪除掛單失敗', {
-      error: error.message || error,
-      orderId,
+    const errorMessage = handleSagaError(error, '刪除掛單失敗', { orderId });
+    
+    yield put(deleteOrderFailure(errorMessage));
+    
+    if (onError) {
+      onError(errorMessage);
+    }
+  }
+}
+
+/**
+ * Create Order Saga
+ * 從掛單建立訂單
+ * 
+ * 支援 onSuccess 和 onError 回調函數，讓 UI 可以在 API 完成後執行特定邏輯
+ */
+function* createOrderSaga(action: PayloadAction<CreateOrderPayload>): SagaIterator {
+  const { data, onSuccess, onError } = action.payload;
+
+  // 步驟 1: 開始建立訂單（設置 creatingOrder 狀態）
+  yield put(createTransactionOrderStart());
+
+  try {
+    // 步驟 2: 使用 httpClient 呼叫建立訂單 API
+    const order = yield call(ordersApi.createOrder, data);
+
+    logger.info('建立訂單成功', {
+      orderId: order.id,
+      pendingOrderId: data.orderId,
+      amount: data.amount,
     });
 
-    // 步驟 6: 如果有錯誤，設置錯誤訊息
-    const errorMessage = error.response?.data?.message || error.message || '刪除掛單失敗，請稍後再試';
-    yield put(deleteOrderFailure(errorMessage));
+    // 步驟 3: 建立成功後，更新 Redux State
+    yield put(createTransactionOrderSuccess());
 
-    // 步驟 7: 調用錯誤回調（如果有提供）
+    // 步驟 4: 調用成功回調（如果有提供）
+    if (onSuccess) {
+      onSuccess(order.id);
+    }
+  } catch (error: any) {
+    const errorMessage = handleSagaError(error, '建立訂單失敗', { pendingOrderId: data.orderId });
+    
+    yield put(createTransactionOrderFailure(errorMessage));
+    
     if (onError) {
       onError(errorMessage);
     }
@@ -158,5 +186,6 @@ export function* watchOrdersSagas(): SagaIterator {
   yield takeLatest(ORDERS_ACTIONS.FETCH_PENDING_ORDERS_REQUEST, fetchPendingOrdersSaga);
   yield takeLatest(ORDERS_ACTIONS.CREATE_PENDING_ORDER_REQUEST, createPendingOrderSaga);
   yield takeLatest(ORDERS_ACTIONS.DELETE_PENDING_ORDER_REQUEST, deletePendingOrderSaga);
+  yield takeLatest(ORDERS_ACTIONS.CREATE_ORDER_REQUEST, createOrderSaga);
 }
 

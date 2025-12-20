@@ -1,6 +1,7 @@
 import { call, put, takeLatest } from 'redux-saga/effects';
 import { SagaIterator } from 'redux-saga';
 import logger from '@pkg/logger';
+import { handleSagaError } from '@pkg/utils/sagaHelpers';
 import { bankCardsApi } from '@/apis/bankCardsApi';
 import { BANKCARDS_ACTIONS } from '../actions/bankCardsActions';
 import {
@@ -41,12 +42,7 @@ function* fetchBankCardsSaga(): SagaIterator {
     // 步驟 3: 取得資料後，更新 Redux State
     yield put(fetchBankCardsSuccess(bankCards));
   } catch (error: any) {
-    logger.error('取得銀行卡列表失敗', {
-      error: error.message || error,
-    });
-
-    // 步驟 4: 如果有錯誤，設置錯誤訊息
-    const errorMessage = error.response?.data?.message || error.message || '取得銀行卡列表失敗，請稍後再試';
+    const errorMessage = handleSagaError(error, '取得銀行卡列表失敗');
     yield put(fetchBankCardsFailure(errorMessage));
   }
 }

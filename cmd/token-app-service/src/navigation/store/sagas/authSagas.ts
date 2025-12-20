@@ -5,6 +5,7 @@ import { loginStart, loginSuccess, loginFailure, logout, registerSuccess } from 
 import { fetchBankCardsSuccess, resetBankCards, BankCard } from '../slices/bankCardsSlice';
 import { fetchOrdersSuccess, resetOrders } from '../slices/ordersSlice';
 import logger from '@pkg/logger';
+import { handleSagaError } from '@pkg/utils/sagaHelpers';
 import { authApi } from '@/apis';
 import type { LoginCredentials, RegisterCredentials, LoginData, RegisterData } from '@/apis';
 
@@ -83,12 +84,7 @@ function* loginSaga(action: PayloadAction<LoginCredentials>) {
       yield put(fetchBankCardsSuccess([]));
     }
   } catch (error: any) {
-      logger.error('登入失敗', {
-      error: error.message || error,
-      });
-
-      // Dispatch loginFailure（設置錯誤訊息）
-    const errorMessage = error.response?.data?.message || error.message || '登入失敗，請稍後再試';
+    const errorMessage = handleSagaError(error, '登入失敗');
     yield put(loginFailure(errorMessage));
   }
 }
@@ -115,12 +111,7 @@ function* registerSaga(action: PayloadAction<RegisterCredentials>) {
       // 清除 loading 狀態並標記註冊成功
       yield put(registerSuccess());
   } catch (error: any) {
-      logger.error('註冊失敗', {
-      error: error.message || error,
-      });
-
-      // Dispatch loginFailure（設置錯誤訊息）
-    const errorMessage = error.response?.data?.message || error.message || '註冊失敗，請稍後再試';
+    const errorMessage = handleSagaError(error, '註冊失敗');
     yield put(loginFailure(errorMessage));
   }
 }
@@ -137,7 +128,7 @@ function* logoutSaga() {
     yield call(authApi.logout);
       logger.info('登出 API 呼叫成功');
   } catch (error: any) {
-    logger.error('登出 API 呼叫失敗', error);
+    logger.warn('登出 API 呼叫失敗', error);
     // 即使 API 失敗，也要清除本地數據並登出
   } finally {
     // 清除 AsyncStorage（包括 Redux Persist 緩存）

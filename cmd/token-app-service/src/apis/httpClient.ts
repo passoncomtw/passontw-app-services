@@ -54,7 +54,7 @@ httpClient.interceptors.request.use(
         }
       }
     } catch (error) {
-      logger.error('HTTP Request - Failed to get token from store', { error });
+      logger.warn('HTTP Request - Failed to get token from store', { error });
     }
     
     // 記錄請求
@@ -63,7 +63,7 @@ httpClient.interceptors.request.use(
     return config;
   },
   (error) => {
-    logger.error('HTTP Request error', { error });
+    logger.warn('HTTP Request error', { error });
     return Promise.reject(error);
   }
 );
@@ -77,7 +77,7 @@ httpClient.interceptors.response.use(
   },
   (error) => {
     // 統一錯誤處理
-    logger.error('HTTP Response error', {
+    logger.warn('HTTP Response error', {
       status: error.response?.status,
       url: error.config?.url,
       message: error.message,
@@ -103,7 +103,7 @@ httpClient.interceptors.response.use(
             })
           );
         }).catch((navError) => {
-          logger.error('HTTP Failed to navigate to login', { error: navError });
+          logger.warn('HTTP Failed to navigate to login', { error: navError });
         });
       }
     }
@@ -119,7 +119,7 @@ httpClient.interceptors.response.use(
 function ensureToken(): string {
   if (!storeRef) {
     const error = new Error('[HTTP] Store reference not set. Please call setStoreRef() first.');
-    logger.error('ensureToken failed', { error: error.message });
+    logger.warn('ensureToken failed', { error: error.message });
     throw error;
   }
 
@@ -133,7 +133,7 @@ function ensureToken(): string {
 
   if (!token) {
     const error = new Error('[HTTP] No authentication token available. Please login first.');
-    logger.error('ensureToken failed', { error: error.message });
+    logger.warn('ensureToken failed', { error: error.message });
     throw error;
   }
 

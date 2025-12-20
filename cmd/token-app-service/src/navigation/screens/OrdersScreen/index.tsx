@@ -109,7 +109,7 @@ export default function OrdersScreen() {
   };
 
   const handleDeleteError = (error: string) => {
-    logger.error('OrdersScreen - 刪除掛單失敗', { error });
+    logger.warn('OrdersScreen - 刪除掛單失敗', { error });
     Alert.alert('錯誤', error);
   };
 
