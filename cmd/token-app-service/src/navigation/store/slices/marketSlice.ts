@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { PendingOrder } from '@/apis/ordersApi';
+import type { SagaErrorResult } from '@pkg/utils/sagaHelpers';
 
 /**
  * Market State
@@ -58,9 +59,9 @@ const marketSlice = createSlice({
       state.buyOrdersTotal = action.payload.total;
       state.buyOrdersError = null;
     },
-    fetchBuyOrdersFailure(state, action: PayloadAction<string>) {
+    fetchBuyOrdersFailure(state, action: PayloadAction<SagaErrorResult>) {
       state.buyOrdersLoading = false;
-      state.buyOrdersError = action.payload;
+      state.buyOrdersError = action.payload.message;
     },
 
     // 賣幣掛單列表 (type=1, 我要買時顯示)
@@ -78,9 +79,9 @@ const marketSlice = createSlice({
       state.sellOrdersTotal = action.payload.total;
       state.sellOrdersError = null;
     },
-    fetchSellOrdersFailure(state, action: PayloadAction<string>) {
+    fetchSellOrdersFailure(state, action: PayloadAction<SagaErrorResult>) {
       state.sellOrdersLoading = false;
-      state.sellOrdersError = action.payload;
+      state.sellOrdersError = action.payload.message;
     },
 
     // 重置市場狀態

@@ -42,8 +42,8 @@ function* fetchBankCardsSaga(): SagaIterator {
     // 步驟 3: 取得資料後，更新 Redux State
     yield put(fetchBankCardsSuccess(bankCards));
   } catch (error: any) {
-    const errorMessage = handleSagaError(error, '取得銀行卡列表失敗');
-    yield put(fetchBankCardsFailure(errorMessage));
+    const errorResult = handleSagaError(error, '取得銀行卡列表失敗');
+    yield put(fetchBankCardsFailure(errorResult));
   }
 }
 

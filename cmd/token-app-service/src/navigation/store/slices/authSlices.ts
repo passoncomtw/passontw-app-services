@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import type { SagaErrorResult } from '@pkg/utils/sagaHelpers';
 
 /**
  * 用戶錢包資訊
@@ -101,10 +102,10 @@ const authSlice = createSlice({
       state.expireIn = action.payload.expireIn;
       state.error = null;
     },
-    loginFailure(state, action: PayloadAction<string>) {
+    loginFailure(state, action: PayloadAction<SagaErrorResult>) {
       state.loading = false;
       state.isAuthenticated = false;
-      state.error = action.payload;
+      state.error = action.payload.message;
     },
     registerSuccess(state) {
       state.loading = false;

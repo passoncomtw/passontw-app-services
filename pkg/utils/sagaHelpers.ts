@@ -292,6 +292,14 @@ export default function* fetchAPIResult<TPayload = any, TResponse = any>({
 }
 
 /**
+ * 錯誤處理結果（包含狀態碼）
+ */
+export interface SagaErrorResult {
+  message: string;
+  statusCode?: number;
+}
+
+/**
  * 統一的錯誤處理函數
  * 
  * 區分業務邏輯錯誤和系統錯誤：
@@ -301,43 +309,47 @@ export default function* fetchAPIResult<TPayload = any, TResponse = any>({
  * @param error - 錯誤對象
  * @param context - 錯誤上下文（如 '登入失敗'、'建立訂單失敗'）
  * @param additionalInfo - 額外資訊（如 orderId、userId 等）
- * @returns 標準化的錯誤訊息
+ * @returns 錯誤訊息和 HTTP 狀態碼
  * 
  * @example
  * ```typescript
  * try {
  *   const data = yield call(api.login, credentials);
  * } catch (error: any) {
- *   const errorMessage = handleSagaError(error, '登入失敗');
- *   yield put(loginFailure(errorMessage));
+ *   const errorResult = handleSagaError(error, '登入失敗');
+ *   yield put(loginFailure(errorResult));
+ *   // errorSaga 會自動檢查 statusCode，如果是 401 會自動登出
  * }
- * 
- * // 或帶額外資訊
- * const errorMessage = handleSagaError(error, '刪除掛單失敗', { orderId });
  * ```
  */
 export function handleSagaError(
   error: any,
   context: string,
   additionalInfo?: Record<string, any>
-): string {
+): SagaErrorResult {
+  const statusCode = error.response?.status;
   const errorMessage = error.response?.data?.message || error.message || `${context}，請稍後再試`;
   
   if (error.response?.data?.message) {
     // API 回應的業務邏輯錯誤（預期內的錯誤）
     logger.warn(`${context} - API 回應錯誤`, {
       message: errorMessage,
+      statusCode,
       ...additionalInfo,
     });
   } else {
     // 系統錯誤（網路異常或意外錯誤）
     logger.error(`${context} - 系統錯誤`, {
       error: error.message || error,
+      statusCode,
       ...additionalInfo,
     });
   }
   
-  return errorMessage;
+  return {
+    message: errorMessage,
+    statusCode,
+  };
 }
 
 /**

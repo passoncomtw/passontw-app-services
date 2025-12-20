@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import type { SagaErrorResult } from '@pkg/utils/sagaHelpers';
 
 /**
  * 銀行資訊
@@ -57,9 +58,9 @@ const bankCardsSlice = createSlice({
       state.cards = action.payload;
       state.error = null;
     },
-    fetchBankCardsFailure(state, action: PayloadAction<string>) {
+    fetchBankCardsFailure(state, action: PayloadAction<SagaErrorResult>) {
       state.loading = false;
-      state.error = action.payload;
+      state.error = action.payload.message;
     },
     clearBankCardsError(state) {
       state.error = null;

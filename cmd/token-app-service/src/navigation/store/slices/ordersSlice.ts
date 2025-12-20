@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { UserPendingOrdersResponse } from '@/apis/ordersApi';
+import type { SagaErrorResult } from '@pkg/utils/sagaHelpers';
 
 /**
  * Orders State
@@ -48,9 +49,9 @@ const ordersSlice = createSlice({
       state.sell = action.payload.sell;
       state.error = null;
     },
-    fetchOrdersFailure(state, action: PayloadAction<string>) {
+    fetchOrdersFailure(state, action: PayloadAction<SagaErrorResult>) {
       state.loading = false;
-      state.error = action.payload;
+      state.error = action.payload.message;
     },
     clearOrdersError(state) {
       state.error = null;
@@ -69,9 +70,9 @@ const ordersSlice = createSlice({
       }
       state.createError = null;
     },
-    createOrderFailure(state, action: PayloadAction<string>) {
+    createOrderFailure(state, action: PayloadAction<SagaErrorResult>) {
       state.creating = false;
-      state.createError = action.payload;
+      state.createError = action.payload.message;
     },
     clearCreateError(state) {
       state.createError = null;
@@ -92,9 +93,9 @@ const ordersSlice = createSlice({
       }
       state.deleteError = null;
     },
-    deleteOrderFailure(state, action: PayloadAction<string>) {
+    deleteOrderFailure(state, action: PayloadAction<SagaErrorResult>) {
       state.deleting = false;
-      state.deleteError = action.payload;
+      state.deleteError = action.payload.message;
     },
     clearDeleteError(state) {
       state.deleteError = null;
@@ -108,9 +109,9 @@ const ordersSlice = createSlice({
       state.creatingOrder = false;
       state.createOrderError = null;
     },
-    createTransactionOrderFailure(state, action: PayloadAction<string>) {
+    createTransactionOrderFailure(state, action: PayloadAction<SagaErrorResult>) {
       state.creatingOrder = false;
-      state.createOrderError = action.payload;
+      state.createOrderError = action.payload.message;
     },
     clearCreateOrderError(state) {
       state.createOrderError = null;

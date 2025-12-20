@@ -84,8 +84,8 @@ function* loginSaga(action: PayloadAction<LoginCredentials>) {
       yield put(fetchBankCardsSuccess([]));
     }
   } catch (error: any) {
-    const errorMessage = handleSagaError(error, '登入失敗');
-    yield put(loginFailure(errorMessage));
+    const errorResult = handleSagaError(error, '登入失敗');
+    yield put(loginFailure(errorResult));
   }
 }
 
@@ -111,8 +111,8 @@ function* registerSaga(action: PayloadAction<RegisterCredentials>) {
       // 清除 loading 狀態並標記註冊成功
       yield put(registerSuccess());
   } catch (error: any) {
-    const errorMessage = handleSagaError(error, '註冊失敗');
-    yield put(loginFailure(errorMessage));
+    const errorResult = handleSagaError(error, '註冊失敗');
+    yield put(loginFailure(errorResult));
   }
 }
 

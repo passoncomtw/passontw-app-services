@@ -47,8 +47,8 @@ function* fetchPendingOrdersSaga(): SagaIterator {
     // 步驟 3: 取得資料後，更新 Redux State
     yield put(fetchOrdersSuccess(ordersData));
   } catch (error: any) {
-    const errorMessage = handleSagaError(error, '取得掛單列表失敗');
-    yield put(fetchOrdersFailure(errorMessage));
+    const errorResult = handleSagaError(error, '取得掛單列表失敗');
+    yield put(fetchOrdersFailure(errorResult));
   }
 }
 
@@ -86,12 +86,12 @@ function* createPendingOrderSaga(action: PayloadAction<CreatePendingOrderPayload
     }
   } catch (error: any) {
     const orderType = data.type === 0 ? '買幣' : '賣幣';
-    const errorMessage = handleSagaError(error, '建立掛單失敗', { type: orderType });
+    const errorResult = handleSagaError(error, '建立掛單失敗', { type: orderType });
     
-    yield put(createOrderFailure(errorMessage));
+    yield put(createOrderFailure(errorResult));
     
     if (onError) {
-      onError(errorMessage);
+      onError(errorResult.message);
     }
   }
 }
@@ -127,12 +127,12 @@ function* deletePendingOrderSaga(action: PayloadAction<DeletePendingOrderPayload
       onSuccess();
     }
   } catch (error: any) {
-    const errorMessage = handleSagaError(error, '刪除掛單失敗', { orderId });
+    const errorResult = handleSagaError(error, '刪除掛單失敗', { orderId });
     
-    yield put(deleteOrderFailure(errorMessage));
+    yield put(deleteOrderFailure(errorResult));
     
     if (onError) {
-      onError(errorMessage);
+      onError(errorResult.message);
     }
   }
 }
@@ -167,12 +167,12 @@ function* createOrderSaga(action: PayloadAction<CreateOrderPayload>): SagaIterat
       onSuccess(order.id);
     }
   } catch (error: any) {
-    const errorMessage = handleSagaError(error, '建立訂單失敗', { pendingOrderId: data.orderId });
+    const errorResult = handleSagaError(error, '建立訂單失敗', { pendingOrderId: data.orderId });
     
-    yield put(createTransactionOrderFailure(errorMessage));
+    yield put(createTransactionOrderFailure(errorResult));
     
     if (onError) {
-      onError(errorMessage);
+      onError(errorResult.message);
     }
   }
 }

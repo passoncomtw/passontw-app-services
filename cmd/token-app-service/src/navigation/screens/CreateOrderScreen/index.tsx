@@ -67,22 +67,7 @@ export default function CreateOrderScreen() {
         sellId: sell?.id,
       });
 
-      // 檢查是否已經有該類型的掛單
-      // 確保 buy/sell 不是 null 或 undefined，且有 id 屬性
-      if (isBuy && buy && buy.id) {
-        logger.warn('CreateOrderScreen - 已有買幣掛單，返回', { buyId: buy.id });
-        Alert.alert('提示', '您已有買幣掛單，無法再新增', [
-          { text: '確定', onPress: () => navigation.goBack() },
-        ]);
-        return;
-      }
-      if (!isBuy && sell && sell.id) {
-        logger.warn('CreateOrderScreen - 已有賣幣掛單，返回', { sellId: sell.id });
-        Alert.alert('提示', '您已有賣幣掛單，無法再新增', [
-          { text: '確定', onPress: () => navigation.goBack() },
-        ]);
-        return;
-      }
+      
 
       logger.info('CreateOrderScreen - 無掛單，繼續載入');
       dispatch(fetchBankCardsRequest());
@@ -218,9 +203,29 @@ export default function CreateOrderScreen() {
       return;
     }
     
-    if (!selectedAccount) {
-      Alert.alert('錯誤', `請選擇${isBuy ? '付款' : '收款'}帳戶`);
-      return;
+    // 買幣時不需要選擇銀行帳戶，自動使用第一個（唯一的）銀行帳戶
+    // 賣幣時需要選擇收款帳戶
+    let accountToUse: PaymentAccount | null = null;
+    
+    if (isBuy) {
+      // 買幣：自動使用第一個銀行帳戶
+      if (paymentAccounts.length === 0) {
+        Alert.alert('錯誤', '您尚未添加銀行卡，請先到個人設定中添加');
+        return;
+      }
+      accountToUse = paymentAccounts[0];
+      logger.info('CreateOrderScreen - 買幣自動使用銀行卡', {
+        id: accountToUse.id,
+        name: accountToUse.name,
+        bankName: accountToUse.bankName,
+      });
+    } else {
+      // 賣幣：必須選擇收款帳戶
+      if (!selectedAccount) {
+        Alert.alert('錯誤', '請選擇收款帳戶');
+        return;
+      }
+      accountToUse = selectedAccount;
     }
     
     const minAmountNum = parseFloat(minAmount);
@@ -252,13 +257,14 @@ export default function CreateOrderScreen() {
     }
 
     // 透過 saga 調用 API 建立掛單
-    const bankcardId = parseInt(selectedAccount.id);
+    const bankcardId = parseInt(accountToUse.id);
     logger.info('CreateOrderScreen - 準備建立掛單', {
-      selectedAccountId: selectedAccount.id,
+      accountId: accountToUse.id,
       bankcardId: bankcardId,
       type: isBuy ? 0 : 1,
       amount: amountNum,
       minAmount: minAmountNum,
+      isBuy,
     });
 
     Alert.alert('確認', `確定建立${isBuy ? '購買' : '出售'}掛單？`, [
@@ -353,43 +359,39 @@ export default function CreateOrderScreen() {
               <Text style={styles.priceText}>CNY ¥{formatNumber(totalPrice)}</Text>
             </View>
 
-            {/* 交易帳戶 */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>交易帳戶</Text>
-              <Pressable 
-                style={({ pressed }) => [
-                  styles.selectField,
-                  pressed && styles.selectFieldPressed,
-                ]}
-                onPress={handleSelectAccount}
-              >
-                {selectedAccount ? (
-                  <View style={styles.selectedAccountInfo}>
-                    <Text style={styles.selectedAccountIcon}>
-                      {getAccountTypeIcon(selectedAccount.type)}
-                    </Text>
-                    <View style={styles.selectedAccountDetails}>
-                      <Text style={styles.selectedAccountType}>
-                        {selectedAccount.bankName || getAccountTypeName(selectedAccount.type)}
+            {/* 交易帳戶 - 僅賣幣時顯示 */}
+            {!isBuy && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>收款帳戶</Text>
+                <Pressable 
+                  style={({ pressed }) => [
+                    styles.selectField,
+                    pressed && styles.selectFieldPressed,
+                  ]}
+                  onPress={handleSelectAccount}
+                >
+                  {selectedAccount ? (
+                    <View style={styles.selectedAccountInfo}>
+                      <Text style={styles.selectedAccountIcon}>
+                        {getAccountTypeIcon(selectedAccount.type)}
                       </Text>
-                      <Text style={styles.selectedAccountNumber}>
-                        {selectedAccount.accountNumber}
-                      </Text>
+                      <View style={styles.selectedAccountDetails}>
+                        <Text style={styles.selectedAccountType}>
+                          {selectedAccount.bankName || getAccountTypeName(selectedAccount.type)}
+                        </Text>
+                        <Text style={styles.selectedAccountNumber}>
+                          {selectedAccount.accountNumber}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                ) : (
-                  <Text style={styles.selectPlaceholder}>
-                    {isBuy ? '請選擇付款帳戶' : '請選擇收款帳戶'}
-                  </Text>
-                )}
-                <Text style={styles.selectArrow}>›</Text>
-              </Pressable>
-              <Text style={styles.hint}>
-                {isBuy 
-                  ? '賣方將以您提供的交易帳戶進行到賬確認，請務必以選擇的交易帳戶進行支付，否則不予以放行'
-                  : '買方將以您提供的交易帳戶進行打款'}
-              </Text>
-            </View>
+                  ) : (
+                    <Text style={styles.selectPlaceholder}>請選擇收款帳戶</Text>
+                  )}
+                  <Text style={styles.selectArrow}>›</Text>
+                </Pressable>
+                <Text style={styles.hint}>買方將以您提供的收款帳戶進行打款</Text>
+              </View>
+            )}
 
             {/* 最小交易量 */}
             <View style={styles.inputGroup}>
@@ -448,7 +450,7 @@ export default function CreateOrderScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* 帳戶選擇 Modal */}
+      {/* 帳戶選擇 Modal - 僅賣幣時使用 */}
       <Modal
         visible={showAccountModal}
         transparent
@@ -458,9 +460,7 @@ export default function CreateOrderScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {isBuy ? '選擇付款帳戶' : '選擇收款帳戶'}
-              </Text>
+              <Text style={styles.modalTitle}>選擇收款帳戶</Text>
               <TouchableOpacity 
                 onPress={() => setShowAccountModal(false)}
                 style={styles.modalCloseButton}

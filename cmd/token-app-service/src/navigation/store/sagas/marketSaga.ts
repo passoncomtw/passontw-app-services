@@ -42,8 +42,8 @@ function* fetchBuyOrdersSaga(action: PayloadAction<GetPendingOrdersParams | unde
 
     yield put(fetchBuyOrdersSuccess(data));
   } catch (error: any) {
-    const errorMessage = handleSagaError(error, '取得買幣掛單列表失敗');
-    yield put(fetchBuyOrdersFailure(errorMessage));
+    const errorResult = handleSagaError(error, '取得買幣掛單列表失敗');
+    yield put(fetchBuyOrdersFailure(errorResult));
   }
 }
 
@@ -74,8 +74,8 @@ function* fetchSellOrdersSaga(action: PayloadAction<GetPendingOrdersParams | und
 
     yield put(fetchSellOrdersSuccess(data));
   } catch (error: any) {
-    const errorMessage = handleSagaError(error, '取得賣幣掛單列表失敗');
-    yield put(fetchSellOrdersFailure(errorMessage));
+    const errorResult = handleSagaError(error, '取得賣幣掛單列表失敗');
+    yield put(fetchSellOrdersFailure(errorResult));
   }
 }
 
