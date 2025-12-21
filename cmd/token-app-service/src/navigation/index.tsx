@@ -9,6 +9,7 @@ import WalletScreen from './screens/WalletScreen';
 import TradeScreen from './screens/TradeScreen';
 import OrdersScreen from './screens/OrdersScreen';
 import OrderListScreen from './screens/OrderListScreen';
+import OrderDetailScreen from './screens/OrderDetailScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import CreateOrderScreen from './screens/CreateOrderScreen';
 import ConfirmOrderScreen from './screens/ConfirmOrderScreen';
@@ -124,6 +125,10 @@ function AuthenticatedStack() {
         component={ConfirmOrderScreen}
       />
       <Stack.Screen 
+        name="OrderDetail" 
+        component={OrderDetailScreen}
+      />
+      <Stack.Screen 
         name="NotFound" 
         component={NotFound}
         options={{ title: '404', headerShown: true }}
@@ -217,6 +222,9 @@ type RootStackParamList = {
     paymentTimeout: number;
     bankName: string;
     bankAccount: string;
+  };
+  OrderDetail: {
+    orderId: string;
   };
   NotFound: undefined;
 };

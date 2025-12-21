@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { UserPendingOrdersResponse } from '@/apis/ordersApi';
+import type { UserPendingOrdersResponse, OrderListResponse, Order } from '@/apis/ordersApi';
 import type { SagaErrorResult } from '@pkg/utils/sagaHelpers';
 
 /**
@@ -16,6 +16,13 @@ interface OrdersState {
   deleteError: string | null; // 刪除掛單錯誤
   creatingOrder: boolean; // 建立訂單中
   createOrderError: string | null; // 建立訂單錯誤
+  // 訂單列表相關
+  orderList: Order[];
+  orderListPage: number;
+  orderListSize: number;
+  orderListTotal: number;
+  orderListLoading: boolean;
+  orderListError: string | null;
 }
 
 const initialState: OrdersState = {
@@ -29,6 +36,13 @@ const initialState: OrdersState = {
   deleteError: null,
   creatingOrder: false,
   createOrderError: null,
+  // 訂單列表初始狀態
+  orderList: [],
+  orderListPage: 1,
+  orderListSize: 10,
+  orderListTotal: 0,
+  orderListLoading: false,
+  orderListError: null,
 };
 
 /**
@@ -116,6 +130,26 @@ const ordersSlice = createSlice({
     clearCreateOrderError(state) {
       state.createOrderError = null;
     },
+    // 訂單列表相關 reducers
+    fetchOrderListStart(state) {
+      state.orderListLoading = true;
+      state.orderListError = null;
+    },
+    fetchOrderListSuccess(state, action: PayloadAction<OrderListResponse>) {
+      state.orderListLoading = false;
+      state.orderList = action.payload.rows;
+      state.orderListPage = action.payload.page;
+      state.orderListSize = action.payload.size;
+      state.orderListTotal = action.payload.total;
+      state.orderListError = null;
+    },
+    fetchOrderListFailure(state, action: PayloadAction<SagaErrorResult>) {
+      state.orderListLoading = false;
+      state.orderListError = action.payload.message;
+    },
+    clearOrderListError(state) {
+      state.orderListError = null;
+    },
     resetOrders() {
       // 重置為初始狀態（用於登出）
       return initialState;
@@ -140,6 +174,10 @@ export const {
   createTransactionOrderSuccess,
   createTransactionOrderFailure,
   clearCreateOrderError,
+  fetchOrderListStart,
+  fetchOrderListSuccess,
+  fetchOrderListFailure,
+  clearOrderListError,
   resetOrders,
 } = ordersSlice.actions;
 

@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 
 export interface Order {
   id: string;
@@ -17,6 +17,13 @@ export interface Order {
   cancelledTime?: string;
   statusMessage?: string;
   cancelReason?: string;
+  // 付款資訊（銀行卡資訊）
+  bankCard?: {
+    bankName?: string;
+    cardNumber?: string;
+    branchName?: string;
+    cardHolderName?: string;
+  };
 }
 
 interface OrderItemProps {
@@ -122,6 +129,40 @@ export default function OrderItem({ order, onPress }: OrderItemProps) {
           <Text style={styles.text}>{order.cancelReason}</Text>
         </View>
       )}
+
+      {/* 付款資訊（銀行卡資訊） */}
+      {order.bankCard && (
+        <>
+          <View style={styles.divider} />
+          <Text style={styles.sectionTitle}>付款資訊</Text>
+          {order.bankCard.bankName && (
+            <View style={styles.row}>
+              <Text style={styles.label}>銀行</Text>
+              <Text style={styles.text}>{order.bankCard.bankName}</Text>
+            </View>
+          )}
+          {order.bankCard.branchName && (
+            <View style={styles.row}>
+              <Text style={styles.label}>分行</Text>
+              <Text style={styles.text}>{order.bankCard.branchName}</Text>
+            </View>
+          )}
+          {order.bankCard.cardNumber && (
+            <View style={styles.row}>
+              <Text style={styles.label}>卡號</Text>
+              <Text style={[styles.text, styles.cardNumber]}>
+                {order.bankCard.cardNumber.replace(/(.{4})/g, '$1 ').trim()}
+              </Text>
+            </View>
+          )}
+          {order.bankCard.cardHolderName && (
+            <View style={styles.row}>
+              <Text style={styles.label}>戶名</Text>
+              <Text style={styles.text}>{order.bankCard.cardHolderName}</Text>
+            </View>
+          )}
+        </>
+      )}
     </Pressable>
   );
 }
@@ -199,6 +240,20 @@ const styles = StyleSheet.create({
   },
   statusMessageDeepOrange: {
     color: '#E65100',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E5E5E5',
+    marginVertical: 12,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 10,
+  },
+  cardNumber: {
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
 });
 

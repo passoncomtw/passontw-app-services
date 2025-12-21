@@ -18,6 +18,9 @@ import {
   createTransactionOrderStart,
   createTransactionOrderSuccess,
   createTransactionOrderFailure,
+  fetchOrderListStart,
+  fetchOrderListSuccess,
+  fetchOrderListFailure,
 } from '../slices/ordersSlice';
 
 /**
@@ -178,6 +181,30 @@ function* createOrderSaga(action: PayloadAction<CreateOrderPayload>): SagaIterat
 }
 
 /**
+ * Fetch Order List Saga
+ * 取得訂單列表
+ */
+function* fetchOrderListSaga(action: PayloadAction<any>): SagaIterator {
+  yield put(fetchOrderListStart());
+
+  try {
+    const params = action.payload || { size: 10, page: 1 };
+    const orderListData = yield call(ordersApi.getOrders, params);
+
+    logger.info('取得訂單列表成功', {
+      count: orderListData.rows.length,
+      total: orderListData.total,
+      page: orderListData.page,
+    });
+
+    yield put(fetchOrderListSuccess(orderListData));
+  } catch (error: any) {
+    const errorResult = handleSagaError(error, '取得訂單列表失敗');
+    yield put(fetchOrderListFailure(errorResult));
+  }
+}
+
+/**
  * Watcher Saga
  * 監聽特定的 action 並觸發對應的 saga
  */
@@ -187,5 +214,6 @@ export function* watchOrdersSagas(): SagaIterator {
   yield takeLatest(ORDERS_ACTIONS.CREATE_PENDING_ORDER_REQUEST, createPendingOrderSaga);
   yield takeLatest(ORDERS_ACTIONS.DELETE_PENDING_ORDER_REQUEST, deletePendingOrderSaga);
   yield takeLatest(ORDERS_ACTIONS.CREATE_ORDER_REQUEST, createOrderSaga);
+  yield takeLatest(ORDERS_ACTIONS.FETCH_ORDER_LIST_REQUEST, fetchOrderListSaga);
 }
 

@@ -1,4 +1,4 @@
-import type { CreatePendingOrderRequest, CreateOrderRequest } from '@/apis/ordersApi';
+import type { CreatePendingOrderRequest, CreateOrderRequest, GetOrdersParams } from '@/apis/ordersApi';
 
 /**
  * Orders Actions
@@ -10,6 +10,7 @@ export const ORDERS_ACTIONS = {
   CREATE_PENDING_ORDER_REQUEST: 'orders/createPendingOrderRequest',
   DELETE_PENDING_ORDER_REQUEST: 'orders/deletePendingOrderRequest',
   CREATE_ORDER_REQUEST: 'orders/createOrderRequest',
+  FETCH_ORDER_LIST_REQUEST: 'orders/fetchOrderListRequest',
 } as const;
 
 /**
@@ -68,4 +69,12 @@ export const deletePendingOrderRequest = (payload: DeletePendingOrderPayload) =>
 export const createOrderRequest = (payload: CreateOrderPayload) => ({
   type: ORDERS_ACTIONS.CREATE_ORDER_REQUEST,
   payload,
+});
+
+/**
+ * 請求取得訂單列表
+ */
+export const fetchOrderListRequest = (params?: GetOrdersParams) => ({
+  type: ORDERS_ACTIONS.FETCH_ORDER_LIST_REQUEST,
+  payload: params,
 });

@@ -94,9 +94,27 @@ export interface Order {
   userId: number;
   amount: number;
   beneficiaryBankcardId: number;
-  status: number; // 訂單狀態
+  status: number; // 訂單狀態：0=待付款, 1=待放行, 2=已完成, 3=已取消, 4=申訴中
   createdAt: string;
   updatedAt?: string;
+}
+
+/**
+ * 訂單列表查詢參數
+ */
+export interface GetOrdersParams {
+  size?: number; // 每頁筆數（預設 10）
+  page?: number; // 頁碼（預設 1）
+}
+
+/**
+ * 訂單列表回應格式（分頁）
+ */
+export interface OrderListResponse {
+  rows: Order[];
+  page: number;
+  size: number;
+  total: number;
 }
 
 /**
@@ -107,6 +125,13 @@ export interface CreateOrderRequest {
   amount: number; // 交易金額
   beneficiaryBankcardId: number; // 受益人銀行卡 ID
   transactionCode: string; // 交易密碼
+}
+
+/**
+ * 取消訂單請求
+ */
+export interface RejectOrderRequest {
+  cancelReason: string; // 取消原因
 }
 
 export const ordersApi = {
@@ -154,5 +179,39 @@ export const ordersApi = {
   createOrder: async (data: CreateOrderRequest): Promise<Order> => {
     const response = await httpClientWithAuth.postWithToken<ApiResponse<Order>>('/orders', data);
     return response.data.data;
+  },
+
+  /**
+   * 取得訂單列表
+   * 取回使用者的訂單列表（支援分頁）
+   * 需要認證 token
+   */
+  getOrders: async (params?: GetOrdersParams): Promise<OrderListResponse> => {
+    const response = await httpClientWithAuth.getWithToken<ApiResponse<OrderListResponse>>('/orders', { params });
+    return response.data.data;
+  },
+
+  /**
+   * 標記訂單為已付款
+   * 需要認證 token
+   */
+  markOrderAsPaid: async (orderId: string): Promise<void> => {
+    await httpClientWithAuth.putWithToken(`/orders/${orderId}/paid`);
+  },
+
+  /**
+   * 取消訂單
+   * 需要認證 token
+   */
+  rejectOrder: async (orderId: string, data: RejectOrderRequest): Promise<void> => {
+    await httpClientWithAuth.putWithToken(`/orders/${orderId}/reject`, data);
+  },
+
+  /**
+   * 賣家確認收款並放行訂單
+   * 需要認證 token
+   */
+  applyOrder: async (orderId: string): Promise<void> => {
+    await httpClientWithAuth.putWithToken(`/orders/${orderId}/apply`);
   },
 };

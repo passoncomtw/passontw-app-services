@@ -38,10 +38,12 @@ import type { CartItem, Order, RootState } from '../../types'
 /**
  * 收據預覽組件
  */
-const ReceiptPreview: React.FC<{
+interface ReceiptPreviewProps {
   order: Order
   onClose: () => void
-}> = ({ order, onClose }) => {
+}
+
+const ReceiptPreview = ({ order, onClose }: ReceiptPreviewProps) => {
   return (
     <Dialog open={true} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
