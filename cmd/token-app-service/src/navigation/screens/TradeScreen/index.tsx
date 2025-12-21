@@ -17,6 +17,7 @@ type TradeScreenRouteProp = RouteProp<{ Trade: { initialTab?: 'buy' | 'sell' } }
  */
 interface TransactionUI {
   id: string;
+  userId?: number; // 建立掛單的使用者 ID
   userName: string;
   amount: number;
   balance: number;
@@ -27,6 +28,10 @@ interface TransactionUI {
   successRate: number;
   transactionCount: number;
   bankName?: string;
+  // 銀行卡詳細資訊
+  bankCardNumber?: string;
+  bankCardHolderName?: string;
+  bankBranchName?: string;
 }
 
 function mapOrderToTransaction(order: PendingOrder): TransactionUI {
@@ -36,6 +41,7 @@ function mapOrderToTransaction(order: PendingOrder): TransactionUI {
 
   return {
     id: order.id,
+    userId: order.user?.id, // 從 market reducer 的 user.id 取得建立掛單的使用者 ID
     userName: order.user?.name || '匿名用戶',
     amount: order.amount,
     balance: order.balance,
@@ -46,6 +52,10 @@ function mapOrderToTransaction(order: PendingOrder): TransactionUI {
     successRate,
     transactionCount: order.doneCount || 0,
     bankName: order.bankcard?.bank?.bankName,
+    // 銀行卡詳細資訊
+    bankCardNumber: order.bankcard?.cardNumber,
+    bankCardHolderName: order.bankcard?.name,
+    bankBranchName: order.bankcard?.branchName,
   };
 }
 
@@ -107,6 +117,7 @@ export default function TradeScreen() {
       orderId: transaction.id,
       activeTab,
       userName: transaction.userName,
+      userId: transaction.userId,
     });
 
     // 導航到統一的確認訂單頁面
@@ -115,17 +126,24 @@ export default function TradeScreen() {
     (navigation as any).navigate('ConfirmOrder', {
       type: activeTab, // 'buy' | 'sell'
       orderId: transaction.id,
+      orderCreatorId: transaction.userId, // 建立掛單的使用者 ID
       userName: transaction.userName,
       availableAmount: transaction.balance, // 使用剩餘數量
       minAmount: transaction.minLimit,
       maxAmount: transaction.maxLimit,
       price: transaction.price,
       bankName: transaction.bankName || transaction.paymentMethod,
+      // 銀行卡詳細資訊
+      bankCardNumber: transaction.bankCardNumber,
+      bankCardHolderName: transaction.bankCardHolderName,
+      bankBranchName: transaction.bankBranchName,
     });
 
     logger.info('TradeScreen - 導航到確認訂單頁面', {
       type: activeTab,
       orderId: transaction.id,
+      orderCreatorId: transaction.userId,
+      bankCardNumber: transaction.bankCardNumber,
     });
   };
 

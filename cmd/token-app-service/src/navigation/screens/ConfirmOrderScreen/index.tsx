@@ -12,9 +12,8 @@ import {
   StatusBar,
   TextInput,
   Alert,
-  Modal,
-  TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -27,12 +26,17 @@ type ConfirmOrderRouteProp = RouteProp<
     ConfirmOrder: {
       type: 'buy' | 'sell';
       orderId: string;
+      orderCreatorId?: number; // 建立掛單的使用者 ID
       userName: string;
       availableAmount: number;
       minAmount: number;
       maxAmount: number;
       price: number;
       bankName: string;
+      // 銀行卡詳細資訊
+      bankCardNumber?: string;
+      bankCardHolderName?: string;
+      bankBranchName?: string;
     };
   },
   'ConfirmOrder'
@@ -44,31 +48,43 @@ export default function ConfirmOrderScreen() {
   const dispatch = useAppDispatch();
   const { cards: bankCards } = useAppSelector((state) => state.bankCards);
   const { creatingOrder } = useAppSelector((state) => state.orders);
+  const { user } = useAppSelector((state) => state.auth);
 
   const {
     type,
     orderId,
+    orderCreatorId,
     userName,
     availableAmount,
     minAmount,
     maxAmount,
     price = 1.0,
     bankName,
+    bankCardNumber,
+    bankCardHolderName,
+    bankBranchName,
   } = route.params;
 
   const isBuy = type === 'buy';
+  
+  // 檢查是否為自己的掛單
+  const isOwnOrder = orderCreatorId && user?.id && orderCreatorId === user.id;
 
   const [amount, setAmount] = useState('');
-  const [selectedBankCard, setSelectedBankCard] = useState<any>(null);
   const [transactionPassword, setTransactionPassword] = useState('');
-  const [showBankCardModal, setShowBankCardModal] = useState(false);
 
   // 當頁面聚焦時，取得銀行卡列表
   useFocusEffect(
     React.useCallback(() => {
-      logger.info('ConfirmOrderScreen - 取得銀行卡列表');
+      logger.info('ConfirmOrderScreen - 頁面初始化', {
+        orderId,
+        orderCreatorId,
+        currentUserId: user?.id,
+        isOwnOrder,
+        isBuy,
+      });
       dispatch(fetchBankCardsRequest());
-    }, [dispatch])
+    }, [dispatch, orderId, orderCreatorId, user?.id, isOwnOrder, isBuy])
   );
 
   // 計算交易金額
@@ -88,15 +104,6 @@ export default function ConfirmOrderScreen() {
   const handleRefresh = () => {
     logger.info('ConfirmOrderScreen - 刷新可交易數量');
     // TODO: 重新獲取掛單信息
-  };
-
-  // 選擇銀行卡
-  const handleSelectBankCard = () => {
-    if (!bankCards || bankCards.length === 0) {
-      Alert.alert('提示', '您還沒有添加銀行卡，請先添加銀行卡');
-      return;
-    }
-    setShowBankCardModal(true);
   };
 
   // 建立訂單成功的回調
@@ -136,10 +143,16 @@ export default function ConfirmOrderScreen() {
       Alert.alert('提示', `數量不能大於最大交易量 ${maxAmount}`);
       return;
     }
-    if (!selectedBankCard) {
-      Alert.alert('提示', '請選擇交易帳戶');
+
+    // 檢查是否有銀行卡
+    if (!bankCards || bankCards.length === 0) {
+      Alert.alert('錯誤', '您尚未添加銀行卡，請先到個人設定中添加');
       return;
     }
+
+    // 自動使用第一個（唯一的）銀行卡
+    const bankCardToUse = bankCards[0];
+    
     if (!transactionPassword) {
       Alert.alert('提示', '請輸入交易密碼');
       return;
@@ -150,12 +163,18 @@ export default function ConfirmOrderScreen() {
       pendingOrderId: orderId,
       amount: amountNum,
       totalPrice,
-      beneficiaryBankcardId: selectedBankCard.id,
+      beneficiaryBankcardId: bankCardToUse.id,
+      isBuy,
+      bankCardInfo: {
+        id: bankCardToUse.id,
+        bankName: bankCardToUse.bank?.bankName,
+        cardNumber: bankCardToUse.cardNumber,
+      },
     });
 
     Alert.alert(
       '確認',
-      `確定${isBuy ? '購買' : '出售'} ${amountNum} e币？`,
+      `確定${isBuy ? '購買' : '出售'} ${amountNum} E幣？`,
       [
         { text: '取消', style: 'cancel' },
         {
@@ -165,7 +184,7 @@ export default function ConfirmOrderScreen() {
               data: {
                 orderId, // 掛單 ID
                 amount: amountNum, // 交易金額
-                beneficiaryBankcardId: selectedBankCard.id, // 受益人銀行卡 ID
+                beneficiaryBankcardId: bankCardToUse.id, // 受益人銀行卡 ID
                 transactionCode: transactionPassword, // 交易密碼
               },
               onSuccess: handleCreateOrderSuccess,
@@ -251,41 +270,24 @@ export default function ConfirmOrderScreen() {
           </View>
         </View>
 
-        {/* 交易帳戶 */}
-        <View style={styles.section}>
-          <Text style={styles.label}>交易帳戶</Text>
-          <Pressable 
-            style={({ pressed }) => [
-              styles.selectField,
-              pressed && styles.selectFieldPressed,
-            ]}
-            onPress={handleSelectBankCard}
-          >
-            {selectedBankCard ? (
-              <View style={styles.selectedAccountInfo}>
-                <Text style={styles.selectedAccountIcon}>🏦</Text>
-                <View style={styles.selectedAccountDetails}>
-                  <Text style={styles.selectedAccountType}>
-                    {selectedBankCard.bank?.bankName}
-                  </Text>
-                  <Text style={styles.selectedAccountNumber}>
-                    {selectedBankCard.cardNumber}
-                  </Text>
-                </View>
+        {/* 收款帳戶 - 僅出售時顯示 */}
+        {!isBuy && bankCards && bankCards.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.label}>收款帳戶</Text>
+            <View style={styles.bankAccountDisplay}>
+              <Text style={styles.selectedAccountIcon}>🏦</Text>
+              <View style={styles.selectedAccountDetails}>
+                <Text style={styles.selectedAccountType}>
+                  {bankCards[0].bank?.bankName}
+                </Text>
+                <Text style={styles.selectedAccountNumber}>
+                  {bankCards[0].cardNumber}
+                </Text>
               </View>
-            ) : (
-              <Text style={styles.selectPlaceholder}>
-                {isBuy ? '請選擇付款帳戶' : '請選擇收款帳戶'}
-              </Text>
-            )}
-            <Text style={styles.selectArrow}>›</Text>
-          </Pressable>
-          <Text style={styles.hint}>
-            {isBuy 
-              ? '賣方將以您提供的交易帳戶進行到帳確認，請務必以選擇的交易帳戶進行支付，否則不予以放行'
-              : '買方將以您提供的交易帳戶進行打款'}
-          </Text>
-        </View>
+            </View>
+            <Text style={styles.hint}>買方將以您提供的收款帳戶進行打款</Text>
+          </View>
+        )}
 
         {/* 交易密碼 */}
         <View style={styles.section}>
@@ -317,17 +319,56 @@ export default function ConfirmOrderScreen() {
             <Text style={styles.infoLabel}>支付方式</Text>
             <Text style={styles.infoValue}>{bankName}</Text>
           </View>
+
+          {/* 賣家收款帳戶資訊 - 僅購買時顯示 */}
+          {isBuy && bankCardNumber && (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.bankCardSectionTitle}>賣家收款帳戶</Text>
+              
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>銀行</Text>
+                <Text style={styles.infoValue}>{bankName}</Text>
+              </View>
+
+              {bankBranchName && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>分行</Text>
+                  <Text style={styles.infoValue}>{bankBranchName}</Text>
+                </View>
+              )}
+
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>卡號</Text>
+                <Text style={styles.infoValueMonospace}>{bankCardNumber}</Text>
+              </View>
+
+              {bankCardHolderName && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>戶名</Text>
+                  <Text style={styles.infoValue}>{bankCardHolderName}</Text>
+                </View>
+              )}
+            </>
+          )}
         </View>
+
+        {/* 自己的掛單提示 */}
+        {isOwnOrder && (
+          <View style={styles.ownOrderWarning}>
+            <Text style={styles.ownOrderWarningText}>⚠️ 這是您自己的掛單，無法進行交易</Text>
+          </View>
+        )}
 
         {/* 提交按鈕 */}
         <Pressable 
           style={({ pressed }) => [
             styles.submitButton,
-            pressed && !creatingOrder && styles.submitButtonPressed,
-            creatingOrder && styles.submitButtonDisabled,
+            pressed && !creatingOrder && !isOwnOrder ? styles.submitButtonPressed : null,
+            (creatingOrder || isOwnOrder) ? styles.submitButtonDisabled : null,
           ]}
           onPress={handleSubmit}
-          disabled={creatingOrder}
+          disabled={!!(creatingOrder || isOwnOrder)}
         >
           {creatingOrder ? (
             <ActivityIndicator size="small" color="#fff" />
@@ -339,63 +380,6 @@ export default function ConfirmOrderScreen() {
         </Pressable>
       </ScrollView>
 
-      {/* 銀行卡選擇 Modal */}
-      <Modal
-        visible={showBankCardModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowBankCardModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {isBuy ? '選擇付款帳戶' : '選擇收款帳戶'}
-              </Text>
-              <TouchableOpacity 
-                onPress={() => setShowBankCardModal(false)}
-                style={styles.modalCloseButton}
-              >
-                <Text style={styles.modalCloseText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            {!bankCards || bankCards.length === 0 ? (
-              <View style={styles.modalEmpty}>
-                <Text style={styles.modalEmptyText}>尚未添加銀行卡</Text>
-                <Text style={styles.modalEmptyHint}>請先到個人設定中添加銀行卡</Text>
-              </View>
-            ) : (
-              <ScrollView style={styles.bankCardList}>
-                {bankCards.map((card) => (
-                  <TouchableOpacity
-                    key={card.id}
-                    style={[
-                      styles.bankCardItem,
-                      selectedBankCard?.id === card.id && styles.bankCardItemSelected,
-                    ]}
-                    onPress={() => {
-                      setSelectedBankCard(card);
-                      setShowBankCardModal(false);
-                    }}
-                  >
-                    <Text style={styles.bankCardIcon}>🏦</Text>
-                    <View style={styles.bankCardInfo}>
-                      <Text style={styles.bankCardType}>
-                        {card.bank?.bankName}
-                      </Text>
-                      <Text style={styles.bankCardNumber}>{card.cardNumber}</Text>
-                      <Text style={styles.bankCardName}>{card.name}</Text>
-                    </View>
-                    {selectedBankCard?.id === card.id && (
-                      <Text style={styles.bankCardCheckmark}>✓</Text>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -581,6 +565,15 @@ const styles = StyleSheet.create({
     marginTop: 8,
     lineHeight: 18,
   },
+  bankAccountDisplay: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 4,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#DDD',
+  },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -594,6 +587,39 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 14,
     color: '#333',
+    fontWeight: '500',
+  },
+  infoValueMonospace: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E5E5E5',
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  bankCardSectionTitle: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  ownOrderWarning: {
+    backgroundColor: '#FFF3E0',
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+  },
+  ownOrderWarningText: {
+    fontSize: 14,
+    color: '#E65100',
+    textAlign: 'center',
     fontWeight: '500',
   },
   submitButton: {
@@ -614,94 +640,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  // Modal 樣式
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: '70%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  modalCloseButton: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalCloseText: {
-    fontSize: 18,
-    color: '#999',
-  },
-  bankCardList: {
-    paddingHorizontal: 16,
-  },
-  bankCardItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  bankCardItemSelected: {
-    backgroundColor: '#E3F2FD',
-  },
-  bankCardIcon: {
-    fontSize: 28,
-    marginRight: 12,
-  },
-  bankCardInfo: {
-    flex: 1,
-  },
-  bankCardType: {
-    fontSize: 15,
-    color: '#333',
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  bankCardNumber: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 2,
-  },
-  bankCardName: {
-    fontSize: 12,
-    color: '#999',
-  },
-  bankCardCheckmark: {
-    fontSize: 20,
-    color: '#007AFF',
-    fontWeight: 'bold',
-  },
-  modalEmpty: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  modalEmptyText: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 8,
-  },
-  modalEmptyHint: {
-    fontSize: 14,
-    color: '#999',
   },
 });
 
