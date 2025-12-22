@@ -113,8 +113,8 @@ export default function ConfirmOrderScreen() {
       { 
         text: '確定', 
         onPress: () => {
-          // 導航回訂單列表頁面
-          (navigation as any).navigate('OrderList');
+          // 直接導航到訂單詳情頁面（在同一個 Stack Navigator 中）
+          (navigation as any).navigate('OrderDetail', { orderId });
         } 
       },
     ]);
