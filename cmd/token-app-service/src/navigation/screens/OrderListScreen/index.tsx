@@ -22,7 +22,8 @@ type CompletedTab = 'completed' | 'cancelled';
 function mapApiOrderToUIOrder(
   apiOrder: ApiOrder,
   buyOrders: any[],
-  sellOrders: any[]
+  sellOrders: any[],
+  currentUserId?: number
 ): Order {
   // 訂單狀態映射：0=待付款, 1=待放行, 2=已完成, 3=已取消, 4=申訴中
   const statusMap: Record<number, { status: string; statusType: string }> = {
@@ -34,6 +35,9 @@ function mapApiOrderToUIOrder(
   };
 
   const statusInfo = statusMap[apiOrder.status] || { status: '未知', statusType: 'pending_payment' };
+  
+  // 判斷當前用戶是買方還是賣方
+  const isBuyer = apiOrder.userId === currentUserId;
 
   // 格式化時間
   const formatDateTime = (dateString: string) => {
@@ -53,6 +57,7 @@ function mapApiOrderToUIOrder(
   const uiOrder: Order = {
     id: apiOrder.id,
     orderNumber: apiOrder.id, // 使用訂單 ID 作為訂單編號
+    type: pendingOrder?.type ?? 0,  
     status: statusInfo.status,
     statusType: statusInfo.statusType as any,
     amount: apiOrder.amount,
@@ -70,9 +75,21 @@ function mapApiOrderToUIOrder(
     };
   }
 
-  // 根據狀態添加額外資訊
-  if (statusInfo.statusType === 'pending_release') {
-    uiOrder.statusMessage = '買家已標記付款，等待賣家確認';
+  // 根據狀態和用戶角色添加額外資訊
+  if (statusInfo.statusType === 'pending_payment') {
+    // 待付款狀態：根據用戶角色顯示不同訊息
+    if (isBuyer) {
+      uiOrder.statusMessage = '請付款給賣家';
+    } else {
+      uiOrder.statusMessage = '等待買方付款';
+    }
+  } else if (statusInfo.statusType === 'pending_release') {
+    // 待放行狀態：根據用戶角色顯示不同訊息
+    if (isBuyer) {
+      uiOrder.statusMessage = '等待賣方確認';
+    } else {
+      uiOrder.statusMessage = '等待確認放行';
+    }
   } else if (statusInfo.statusType === 'dispute') {
     uiOrder.statusMessage = '客服處理中，請耐心等待';
   } else if (statusInfo.statusType === 'completed' && apiOrder.updatedAt) {
@@ -94,6 +111,7 @@ export default function OrderListScreen() {
     orderListError,
   } = useAppSelector((state) => state.orders);
   const { buyOrders, sellOrders } = useAppSelector((state) => state.market);
+  const { user } = useAppSelector((state) => state.auth);
 
   const [category, setCategory] = useState<OrderCategory>('ongoing');
   const [ongoingTab, setOngoingTab] = useState<OngoingTab>('pending_payment');
@@ -140,8 +158,8 @@ export default function OrderListScreen() {
 
   // 將 API 訂單轉換為 UI 訂單
   const uiOrders = useMemo(() => {
-    return orderList.map((order) => mapApiOrderToUIOrder(order, buyOrders, sellOrders));
-  }, [orderList, buyOrders, sellOrders]);
+    return orderList.map((order) => mapApiOrderToUIOrder(order, buyOrders, sellOrders, user?.id));
+  }, [orderList, buyOrders, sellOrders, user?.id]);
 
   // 根據分類和 tab 顯示對應的訂單
   const displayOrders = useMemo(() => {

@@ -4,10 +4,12 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import { theme } from '@/theme';
 
 export interface Order {
   id: string;
   orderNumber: string;
+  type: number;
   status: string;
   statusType: 'pending_payment' | 'pending_release' | 'dispute' | 'completed' | 'cancelled';
   amount: number;
@@ -36,7 +38,7 @@ export default function OrderItem({ order, onPress }: OrderItemProps) {
     return num.toLocaleString('zh-TW');
   };
 
-  // 根據狀態類型設置樣式
+  // 根據狀態類型設置樣式（與訂單詳情頁面保持一致）
   const getStatusStyle = () => {
     switch (order.statusType) {
       case 'completed':
@@ -54,10 +56,16 @@ export default function OrderItem({ order, onPress }: OrderItemProps) {
           container: styles.statusDispute,
           text: styles.statusTextDispute,
         };
+      case 'pending_release':
+        return {
+          container: styles.statusPendingRelease,
+          text: styles.statusTextPendingRelease,
+        };
+      case 'pending_payment':
       default:
         return {
-          container: styles.statusProcessing,
-          text: styles.statusTextProcessing,
+          container: styles.statusPendingPayment,
+          text: styles.statusTextPendingPayment,
         };
     }
   };
@@ -94,6 +102,10 @@ export default function OrderItem({ order, onPress }: OrderItemProps) {
       <View style={styles.row}>
         <Text style={styles.label}>訂單編號</Text>
         <Text style={styles.text}>{order.orderNumber}</Text>
+      </View>
+      <View style={styles.row}>
+        <Text style={styles.label}>掛單類型</Text>
+        <Text style={styles.text}>{order.type === 0 ? '買幣' : '賣幣'}</Text>
       </View>
       <View style={styles.row}>
         <Text style={styles.label}>數量</Text>
@@ -189,33 +201,39 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginBottom: 12,
   },
-  statusProcessing: {
-    backgroundColor: '#FFF3E0',
+  statusPendingPayment: {
+    backgroundColor: '#FFF3E0', // 待付款 - 警告色背景（淺黃）
+  },
+  statusPendingRelease: {
+    backgroundColor: '#E3F2FD', // 待放行 - 資訊色背景（淺藍）
   },
   statusCompleted: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: '#E8F5E9', // 已完成 - 成功色背景（淺綠）
   },
   statusCancelled: {
-    backgroundColor: '#FFEBEE',
+    backgroundColor: '#F5F5F5', // 已取消 - 灰色背景
   },
   statusDispute: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: '#FFEBEE', // 申訴中 - 錯誤色背景（淺紅）
   },
   statusText: {
     fontSize: 13,
     fontWeight: '600',
   },
-  statusTextProcessing: {
-    color: '#F57C00',
+  statusTextPendingPayment: {
+    color: theme.status.warning, // '#FF9800'
+  },
+  statusTextPendingRelease: {
+    color: theme.status.info, // '#2196F3'
   },
   statusTextCompleted: {
-    color: '#2E7D32',
+    color: theme.status.success, // '#4CAF50'
   },
   statusTextCancelled: {
-    color: '#C62828',
+    color: theme.text.tertiary, // '#999999'
   },
   statusTextDispute: {
-    color: '#E65100',
+    color: theme.status.error, // '#F44336'
   },
   row: {
     flexDirection: 'row',

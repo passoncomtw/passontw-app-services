@@ -19,6 +19,7 @@ import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navig
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchOrderListRequest } from '../../store/actions/ordersActions';
 import { fetchBankCardsRequest } from '../../store/actions/bankCardsActions';
+import { fetchBuyOrdersRequest, fetchSellOrdersRequest } from '../../store/actions/marketActions';
 import { theme, commonStyles } from '@/theme';
 import logger from '@pkg/logger';
 import { ordersApi } from '@/apis';
@@ -50,6 +51,7 @@ export default function OrderDetailScreen() {
   const { orderList, orderListLoading } = useAppSelector((state) => state.orders);
   const { user } = useAppSelector((state) => state.auth);
   const { cards: bankCards } = useAppSelector((state) => state.bankCards);
+  const { buyOrders, sellOrders } = useAppSelector((state) => state.market);
 
   const { orderId } = route.params;
 
@@ -63,6 +65,36 @@ export default function OrderDetailScreen() {
   
   // 穩定 order.createdAt 的引用
   const orderCreatedAt = order?.createdAt;
+
+  // 判斷訂單類型（買幣/賣幣）- 從掛單列表中取得
+  const orderType = React.useMemo(() => {
+    if (!order?.orderId) return null;
+    const allOrders = [...buyOrders, ...sellOrders];
+    const pendingOrder = allOrders.find((po) => po.id === order.orderId);
+    if (pendingOrder) {
+      // type: 0=買幣, 1=賣幣
+      return pendingOrder.type === 0 ? 'buy' : 'sell';
+    }
+    return null;
+  }, [order?.orderId, buyOrders, sellOrders]);
+
+  // 判斷當前用戶是否需要付款
+  // 邏輯：如果掛單類型是 1（賣幣），表示是其他用戶建立的賣幣掛單，當前用戶是買方，需要付款
+  //       如果掛單類型是 0（買幣），表示是其他用戶建立的買幣掛單，當前用戶是賣方，不需要付款
+  const needsPayment = React.useMemo(() => {
+    if (!orderType) return false;
+    // 掛單 type = 1（賣幣）→ 當前用戶是買方 → 需要付款
+    // 掛單 type = 0（買幣）→ 當前用戶是賣方 → 不需要付款
+    return orderType === 'sell';
+  }, [orderType]);
+
+  // 判斷當前用戶是買方還是賣方（用於顯示不同的 UI）
+  // order.userId 是建立訂單的使用者（買方）
+  const isBuyer = React.useMemo(() => {
+    return order?.userId === user?.id;
+  }, [order?.userId, user?.id]);
+  
+  const isSeller = !isBuyer; // 賣方是掛單建立者
 
   // 從訂單中取得收款資訊
   const sellerInfo = React.useMemo(() => {
@@ -111,11 +143,13 @@ export default function OrderDetailScreen() {
         return;
       }
 
-      logger.info('OrderDetailScreen - 取得訂單列表和銀行卡列表');
+      logger.info('OrderDetailScreen - 取得訂單列表、掛單列表和銀行卡列表');
       hasInitialized.current = true;
       isFetching.current = true;
       
       dispatch(fetchOrderListRequest({ size: 100, page: 1 }));
+      dispatch(fetchBuyOrdersRequest({ page: 1, size: 100 }));
+      dispatch(fetchSellOrdersRequest({ page: 1, size: 100 }));
       dispatch(fetchBankCardsRequest());
       
       // 清理函數：當頁面失去焦點時重置標記
@@ -210,7 +244,7 @@ export default function OrderDetailScreen() {
     Alert.alert('已複製', `${label}已複製到剪貼板`);
   };
 
-  // 標記已付款
+  // 標記已付款（買方操作）
   const handleMarkAsPaid = () => {
     Alert.alert(
       '確認',
@@ -223,12 +257,46 @@ export default function OrderDetailScreen() {
             setLoading(true);
             try {
               await ordersApi.markOrderAsPaid(orderId);
-              Alert.alert('成功', '已標記為已付款', [
+              Alert.alert('成功', '已標記為已付款，等待賣方確認', [
                 {
                   text: '確定',
                   onPress: () => {
+                    hasInitialized.current = false; // 允許刷新
                     dispatch(fetchOrderListRequest({ size: 100, page: 1 }));
-                    navigation.goBack();
+                  },
+                },
+              ]);
+            } catch (error: any) {
+              const errorMessage = error.response?.data?.message || error.message || '操作失敗，請稍後再試';
+              Alert.alert('錯誤', errorMessage);
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // 確認放行（賣方操作）
+  const handleConfirmRelease = () => {
+    Alert.alert(
+      '確認',
+      '確定已收到款項並放行？',
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '確定',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await ordersApi.applyOrder(orderId);
+              Alert.alert('成功', '已確認收款並放行，訂單已完成', [
+                {
+                  text: '確定',
+                  onPress: () => {
+                    hasInitialized.current = false; // 允許刷新
+                    dispatch(fetchOrderListRequest({ size: 100, page: 1 }));
                   },
                 },
               ]);
@@ -311,13 +379,25 @@ export default function OrderDetailScreen() {
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backButtonText}>‹</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>{statusInfo.label}</Text>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>{statusInfo.label}</Text>
+          {orderType && (
+            <View style={[
+              styles.orderTypeBadge,
+              orderType === 'buy' ? styles.orderTypeBuy : styles.orderTypeSell
+            ]}>
+              <Text style={styles.orderTypeText}>
+                {orderType === 'buy' ? '買幣' : '賣幣'}
+              </Text>
+            </View>
+          )}
+        </View>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* 付款給賣家區塊 */}
-        {orderStatus === 0 && (
+        {/* 付款資訊區塊 - 僅需要付款的用戶在待付款狀態時顯示 */}
+        {orderStatus === 0 && needsPayment && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>付款給賣家</Text>
             {timeRemaining !== null && timeRemaining > 0 && (
@@ -355,19 +435,107 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
-        <View style={styles.section}>
-          <Pressable
-            onPress={() => setShowRecipientInfo(!showRecipientInfo)}
-            style={styles.sectionHeader}
-          >
-            <Text style={styles.sectionTitle}>收款資訊</Text>
-            <Text style={styles.collapseIcon}>{showRecipientInfo ? '▲' : '▼'}</Text>
-          </Pressable>
-          {showRecipientInfo && sellerInfo && (
-            <>
-              <Text style={styles.hintText}>
-                以下為賣方的收款資訊，請使用您選擇的交易帳戶進行轉帳，否則不予以放行
-              </Text>
+        {/* 等待買方付款區塊 - 僅賣方在待付款狀態時顯示 */}
+        {orderStatus === 0 && isSeller && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>等待買方付款</Text>
+            <View style={styles.amountRow}>
+              <Text style={styles.amountLabel}>收款金額</Text>
+              <View style={styles.amountValueRow}>
+                <Text style={styles.amountValue}>¥ {order.amount.toLocaleString('zh-TW')}</Text>
+                <Pressable
+                  onPress={() => copyToClipboard(order.amount.toString(), '收款金額')}
+                  style={styles.copyButton}
+                >
+                  <Text style={styles.copyIcon}>📋</Text>
+                </Pressable>
+              </View>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>數量</Text>
+              <Text style={styles.infoValue}>{order.amount.toLocaleString('zh-TW')} E幣</Text>
+            </View>
+            <Text style={styles.hintText}>
+              買方正在付款中，請耐心等待。買方付款完成後，訂單狀態將變更為「待放行」。
+            </Text>
+          </View>
+        )}
+
+        {/* 等待賣方確認區塊 - 僅買方在待放行狀態時顯示 */}
+        {orderStatus === 1 && isBuyer && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>等待賣方確認</Text>
+            <View style={styles.amountRow}>
+              <Text style={styles.amountLabel}>付款金額</Text>
+              <Text style={styles.amountValue}>¥ {order.amount.toLocaleString('zh-TW')}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>數量</Text>
+              <Text style={styles.infoValue}>{order.amount.toLocaleString('zh-TW')} E幣</Text>
+            </View>
+            <Text style={styles.hintText}>
+              您已標記為已付款，等待賣方確認收款並放行。確認後訂單將自動完成。
+            </Text>
+          </View>
+        )}
+
+        {/* 等待確認放行區塊 - 僅賣方在待放行狀態時顯示 */}
+        {orderStatus === 1 && isSeller && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>等待確認放行</Text>
+            <View style={styles.amountRow}>
+              <Text style={styles.amountLabel}>收款金額</Text>
+              <Text style={styles.amountValue}>¥ {order.amount.toLocaleString('zh-TW')}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>數量</Text>
+              <Text style={styles.infoValue}>{order.amount.toLocaleString('zh-TW')} E幣</Text>
+            </View>
+            <Text style={styles.hintText}>
+              買方已標記為已付款，請確認您已收到款項。確認後將放行並完成訂單。
+            </Text>
+          </View>
+        )}
+
+        {/* 訂單已完成區塊 */}
+        {orderStatus === 2 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>訂單已完成</Text>
+            <View style={styles.amountRow}>
+              <Text style={styles.amountLabel}>{isBuyer ? '付款金額' : '收款金額'}</Text>
+              <Text style={styles.amountValue}>¥ {order.amount.toLocaleString('zh-TW')}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>數量</Text>
+              <Text style={styles.infoValue}>{order.amount.toLocaleString('zh-TW')} E幣</Text>
+            </View>
+            {order.updatedAt && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>完成時間</Text>
+                <Text style={styles.infoValue}>{formatDateTime(order.updatedAt)}</Text>
+              </View>
+            )}
+            <Text style={styles.hintText}>
+              訂單已成功完成，交易已完成。
+            </Text>
+          </View>
+        )}
+
+        {/* 收款資訊區塊 - 僅需要付款的用戶在待付款狀態時顯示 */}
+        {orderStatus === 0 && needsPayment && sellerInfo && (
+          <View style={styles.section}>
+            <Pressable
+              onPress={() => setShowRecipientInfo(!showRecipientInfo)}
+              style={styles.sectionHeader}
+            >
+              <Text style={styles.sectionTitle}>收款資訊</Text>
+              <Text style={styles.collapseIcon}>{showRecipientInfo ? '▲' : '▼'}</Text>
+            </Pressable>
+            {showRecipientInfo && (
+              <>
+                <Text style={styles.hintText}>
+                  以下為賣方的收款資訊，請使用您選擇的交易帳戶進行轉帳，否則不予以放行
+                </Text>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>賣家姓名</Text>
                 <View style={styles.infoValueRow}>
@@ -434,9 +602,10 @@ export default function OrderDetailScreen() {
                   </View>
                 </View>
               )}
-            </>
-          )}
-        </View>
+              </>
+            )}
+          </View>
+        )}
 
         {/* 訂單資訊區塊（可摺疊） */}
         <View style={styles.section}>
@@ -479,7 +648,8 @@ export default function OrderDetailScreen() {
       </ScrollView>
 
       {/* 底部按鈕 */}
-      {orderStatus === 0 && (
+      {/* 需要付款的用戶：待付款狀態 - 顯示「我已付款」和「取消訂單」 */}
+      {orderStatus === 0 && needsPayment && (
         <View style={styles.buttonContainer}>
           <Pressable
             style={[styles.buttonPrimary, loading && styles.buttonDisabled]}
@@ -498,6 +668,23 @@ export default function OrderDetailScreen() {
             disabled={loading}
           >
             <Text style={styles.buttonSecondaryText}>取消訂單</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* 賣方：待放行狀態 - 顯示「確認放行」 */}
+      {orderStatus === 1 && isSeller && (
+        <View style={styles.buttonContainer}>
+          <Pressable
+            style={[styles.buttonPrimary, loading && styles.buttonDisabled]}
+            onPress={handleConfirmRelease}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color={theme.background.primary} />
+            ) : (
+              <Text style={styles.buttonPrimaryText}>確認放行</Text>
+            )}
           </Pressable>
         </View>
       )}
@@ -532,10 +719,31 @@ const styles = StyleSheet.create({
     color: theme.secondary,
     fontWeight: '300',
   },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
   headerTitle: {
     fontSize: theme.fontSize.xl,
     fontWeight: '600',
     color: theme.secondary,
+  },
+  orderTypeBadge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.radius.sm,
+  },
+  orderTypeBuy: {
+    backgroundColor: theme.status.info,
+  },
+  orderTypeSell: {
+    backgroundColor: theme.status.warning,
+  },
+  orderTypeText: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: '600',
+    color: theme.background.primary,
   },
   placeholder: {
     width: 44,
