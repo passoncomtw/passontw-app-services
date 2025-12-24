@@ -12,11 +12,9 @@ export interface Bank {
 
 /**
  * 銀行卡資訊
- * 注意：userId 是必需的，在進入 store 前會被添加
  */
 export interface BankCard {
   id: number;
-  userId: number; // 必需，確保 store 中的銀行卡都有 userId
   bankId: number;
   name: string;
   cardNumber: string;

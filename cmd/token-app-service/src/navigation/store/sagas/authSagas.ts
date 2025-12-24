@@ -57,24 +57,19 @@ function* loginSaga(action: PayloadAction<LoginCredentials>) {
 
     // 同步銀行卡資料到 bankCards store
     if (data.user.bankCards && data.user.bankCards.length > 0) {
-      const cardsWithUserId = data.user.bankCards.map((card) => ({
-        ...card,
-        userId: data.user.id,
-      })) as BankCard[];
-
       logger.info('🔄 登入成功 - 同步銀行卡資料到 store', {
         userId: data.user.id,
         userName: data.user.name,
-        count: cardsWithUserId.length,
-        cardIds: cardsWithUserId.map(c => c.id),
-        cards: cardsWithUserId.map(c => ({
+        count: data.user.bankCards.length,
+        cardIds: data.user.bankCards.map(c => c.id),
+        cards: data.user.bankCards.map(c => ({
           id: c.id,
           name: c.name,
           cardNumber: c.cardNumber,
         })),
       });
 
-      yield put(fetchBankCardsSuccess(cardsWithUserId));
+      yield put(fetchBankCardsSuccess(data.user.bankCards as BankCard[]));
     } else {
       // 如果沒有銀行卡，清空 store
       logger.info('🔄 登入成功 - 清空銀行卡資料（無銀行卡）', {

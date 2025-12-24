@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { UserPendingOrdersResponse, OrderListResponse, Order } from '@/apis/ordersApi';
+import type { UserPendingOrdersResponse, OrderListResponse } from '@/apis/ordersApi';
 import type { SagaErrorResult } from '@pkg/utils/sagaHelpers';
+import type { OrderItem } from '@/interfaces';
 
 /**
  * Orders State
@@ -17,7 +18,7 @@ interface OrdersState {
   creatingOrder: boolean; // 建立訂單中
   createOrderError: string | null; // 建立訂單錯誤
   // 訂單列表相關
-  orderList: Order[];
+  orderList: OrderItem[];
   orderListPage: number;
   orderListSize: number;
   orderListTotal: number;

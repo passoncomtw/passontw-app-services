@@ -1,5 +1,6 @@
 import httpClient, { httpClientWithAuth } from './httpClient';
-import type { ApiResponse } from './authApi';
+import type { ApiResponse } from '@/interfaces/store';
+import type { OrderItem } from '@/interfaces';
 
 /**
  * 掛單資料結構
@@ -86,18 +87,10 @@ export interface CreatePendingOrderRequest {
 }
 
 /**
- * 訂單資料結構
+ * 訂單資料結構（已遷移至 @/interfaces/orderItem）
+ * @deprecated 請使用 OrderItem 替代
  */
-export interface Order {
-  id: string;
-  orderId: string; // 掛單 ID
-  userId: number;
-  amount: number;
-  beneficiaryBankcardId: number;
-  status: number; // 訂單狀態：0=待付款, 1=待放行, 2=已完成, 3=已取消, 4=申訴中
-  createdAt: string;
-  updatedAt?: string;
-}
+export type Order = OrderItem;
 
 /**
  * 訂單列表查詢參數
@@ -111,7 +104,7 @@ export interface GetOrdersParams {
  * 訂單列表回應格式（分頁）
  */
 export interface OrderListResponse {
-  rows: Order[];
+  rows: OrderItem[];
   page: number;
   size: number;
   total: number;
@@ -176,8 +169,8 @@ export const ordersApi = {
    * 從掛單建立一筆新的訂單
    * 需要認證 token
    */
-  createOrder: async (data: CreateOrderRequest): Promise<Order> => {
-    const response = await httpClientWithAuth.postWithToken<ApiResponse<Order>>('/orders', data);
+  createOrder: async (data: CreateOrderRequest): Promise<OrderItem> => {
+    const response = await httpClientWithAuth.postWithToken<ApiResponse<OrderItem>>('/orders', data);
     return response.data.data;
   },
 

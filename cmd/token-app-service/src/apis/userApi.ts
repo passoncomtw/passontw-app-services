@@ -1,5 +1,5 @@
 import { httpClientWithAuth } from './httpClient';
-import type { ApiResponse, User } from './authApi';
+import type { ApiResponse, User } from '@/interfaces/store';
 
 export const userApi = {
   /**

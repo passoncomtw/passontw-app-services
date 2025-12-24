@@ -1,5 +1,5 @@
 import { httpClientWithAuth } from './httpClient';
-import type { ApiResponse } from './authApi';
+import type { ApiResponse } from '@/interfaces/store';
 
 /**
  * 銀行資訊
@@ -16,7 +16,6 @@ export interface Bank {
  */
 export interface BankCard {
   id: number;
-  userId: number;
   bankId: number;
   name: string;
   cardNumber: string;

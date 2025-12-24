@@ -3,7 +3,7 @@
  * 支援買幣和賣幣兩種模式
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
