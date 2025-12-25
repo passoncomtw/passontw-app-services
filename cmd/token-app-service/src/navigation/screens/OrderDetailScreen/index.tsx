@@ -27,13 +27,9 @@ type OrderDetailRouteProp = RouteProp<
 export default function OrderDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute<OrderDetailRouteProp>();
-  const { orderList, orderListLoading, user } = useAppSelector((state) => {
-    return {
-      orderList: state.orders.orderList,
-      orderListLoading: state.orders.orderListLoading,
-      user: state.auth.user,
-    }
-  });
+  const orderList = useAppSelector((state) => state.orders.orderList);
+  const orderListLoading = useAppSelector((state) => state.orders.orderListLoading);
+  const user = useAppSelector((state) => state.auth.user);
 
   const { orderId } = route.params;
 

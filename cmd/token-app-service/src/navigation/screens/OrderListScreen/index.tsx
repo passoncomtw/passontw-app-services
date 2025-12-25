@@ -89,9 +89,11 @@ export default function OrderListScreen() {
           return orderList.filter((order) => order.status === 2);
         case 'cancelled':
           return orderList.filter((order) => order.status === 3);
+        default:
+          return [];
       }
     }
-  }, [category, ongoingTab]);
+  }, [category, ongoingTab, completedTab, orderList]);
 
   return (
     <View style={styles.container}>

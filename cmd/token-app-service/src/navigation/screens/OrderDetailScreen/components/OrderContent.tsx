@@ -6,12 +6,12 @@ import { OrderItem } from '@/interfaces';
 import { ORDER_STATUS_MAP } from '@/constants/orders';
 import { User } from '@/interfaces/store';
 
-const validateNeedToPay = (isBuyPendingOrder: boolean, user: User, order: OrderItem) => {
+const validateNeedToPay = (isBuyPendingOrder: boolean, user: User, order: OrderItem): boolean => {
   if (isBuyPendingOrder) {
-    if (user.id === order.user.id) return true;
-    return false;
+    if (order.status === 0) return true;
+    return false
   }
-
+  
   if (user.id === order.pendingOrder.user.id) return true;
   return false;
 }
