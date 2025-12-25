@@ -7,61 +7,105 @@ import { ORDER_STATUS_MAP } from '@/constants/orders';
 import { User } from '@/interfaces/store';
 import { useAppDispatch } from '@/navigation/store/hooks';
 import type { AppDispatch } from '@/navigation/store/configureStore';
-import { markOrderAsPaidRequest } from '@/navigation/store/actions/ordersActions';
+import { markOrderAsPaidRequest, applyOrderRequest } from '@/navigation/store/actions/ordersActions';
 
-const validateNeedToPay = (isBuyPendingOrder: boolean, user: User, order: OrderItem): boolean => {
-  if (isBuyPendingOrder) {
-    if (order.status === 0 && user.id === order.user.id) return true;
-    return false
+const handleMarkAsPaid = (orderId: string, dispatch: AppDispatch) => () => {
+  Alert.alert(
+    '確認付款',
+    '確認已完成匯款？',
+    [
+      {
+        text: '取消',
+        style: 'cancel',
+      },
+      {
+        text: '確認',
+        onPress: () => {
+          dispatch(markOrderAsPaidRequest({
+            orderId,
+            onSuccess: () => {
+              Alert.alert('成功', '已標記為已付款');
+            },
+            onError: (error) => {
+              Alert.alert('錯誤', error || '標記付款失敗');
+            },
+          }));
+        },
+      },
+    ]
+  );
+};
+
+const handleApplyOrder = (orderId: string, dispatch: AppDispatch) => () => {
+  Alert.alert(
+    '確認放行',
+    '確認已收到款項並放行訂單？',
+    [
+      {
+        text: '取消',
+        style: 'cancel',
+      },
+      {
+        text: '確認',
+        onPress: () => {
+          dispatch(applyOrderRequest({
+            orderId,
+            onSuccess: () => {
+              Alert.alert('成功', '訂單已放行');
+            },
+            onError: (error) => {
+              Alert.alert('錯誤', error || '放行訂單失敗');
+            },
+          }));
+        },
+      },
+    ]
+  );
+};
+
+const Footer = (props: { order: OrderItem, user: User; dispatch: AppDispatch }) => {
+  const { order, user, dispatch } = props;
+  const isBuyPendingOrder = order.pendingOrder.type === 0;
+
+  if (order.pendingOrder.type === 0) {
+    if (user.id === order.user.id) {
+      if (order.status === 0) {
+        return (<View style={styles.buttonContainer}>
+          <Pressable style={styles.buttonPrimary} onPress={handleMarkAsPaid(order.id, dispatch)}>
+            <Text style={styles.buttonPrimaryText}>匯款已完成</Text>
+          </Pressable>
+        </View>)
+      }
+      return (<View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>等待確認放行</Text>
+      </View>)
+    } else {
+      if (order.status === 1) {
+        return (<View style={styles.buttonContainer}>
+          <Pressable style={styles.buttonPrimary} onPress={handleApplyOrder(order.id, dispatch)}>
+            <Text style={styles.buttonPrimaryText}>確認放行</Text>
+          </Pressable>
+        </View>)
+      }
+      return (<View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>等待其他動作</Text>
+      </View>)
+    }
   }
-  
-  if (user.id === order.pendingOrder.user.id) return true;
-  return false;
-}
-
-const Footer = (props: { needToPay: boolean; orderId: string; dispatch: AppDispatch }) => {
-  const { needToPay, orderId, dispatch } = props;
-  
-  const handleMarkAsPaid = () => {
-    Alert.alert(
-      '確認付款',
-      '確認已完成匯款？',
-      [
-        {
-          text: '取消',
-          style: 'cancel',
-        },
-        {
-          text: '確認',
-          onPress: () => {
-            dispatch(markOrderAsPaidRequest({
-              orderId,
-              onSuccess: () => {
-                Alert.alert('成功', '已標記為已付款');
-              },
-              onError: (error) => {
-                Alert.alert('錯誤', error || '標記付款失敗');
-              },
-            }));
-          },
-        },
-      ]
-    );
-  };
-
-  if (needToPay) {
-    return ( <View style={styles.buttonContainer}>
-      <Pressable style={styles.buttonPrimary} onPress={handleMarkAsPaid}>
+  if (order.status === 0 && isBuyPendingOrder && user.id === order.user.id) {
+    return (<View style={styles.buttonContainer}>
+      <Pressable style={styles.buttonPrimary} onPress={handleMarkAsPaid(order.id, dispatch)}>
         <Text style={styles.buttonPrimaryText}>匯款已完成</Text>
       </Pressable>
     </View>)
   }
+
   return (
     <View style={styles.section}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>等待對方完成付款動作</Text>
-          </View>
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>等待對方完成付款動作</Text>
       </View>
+    </View>
   )
 }
 const OrderContent = (props: { order: OrderItem, user: User }) => {
@@ -69,7 +113,6 @@ const OrderContent = (props: { order: OrderItem, user: User }) => {
   const dispatch = useAppDispatch();
 
   const isBuyPendingOrder = order.pendingOrder.type === 0;
-  const needToPay = validateNeedToPay(isBuyPendingOrder, user, order);
 
   return (
     <View>
@@ -146,7 +189,7 @@ const OrderContent = (props: { order: OrderItem, user: User }) => {
             <Text style={styles.infoLabel}>交易資料</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>{isBuyPendingOrder ? "買幣掛單 匯款給訂單使用者": "賣幣掛單 匯款給掛單使用者"}</Text>
+            <Text style={styles.infoLabel}>{isBuyPendingOrder ? "買幣掛單 匯款給訂單使用者" : "賣幣掛單 匯款給掛單使用者"}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>交易金額</Text>
@@ -169,7 +212,7 @@ const OrderContent = (props: { order: OrderItem, user: User }) => {
         </>
       </View>
 
-      <Footer needToPay={needToPay} orderId={order.id} dispatch={dispatch} />
+      <Footer order={order} user={user} dispatch={dispatch} />
     </View>
   )
 }

@@ -12,6 +12,7 @@ export const ORDERS_ACTIONS = {
   CREATE_ORDER_REQUEST: 'orders/createOrderRequest',
   FETCH_ORDER_LIST_REQUEST: 'orders/fetchOrderListRequest',
   MARK_ORDER_AS_PAID_REQUEST: 'orders/markOrderAsPaidRequest',
+  APPLY_ORDER_REQUEST: 'orders/applyOrderRequest',
 } as const;
 
 /**
@@ -94,5 +95,22 @@ export interface MarkOrderAsPaidPayload {
  */
 export const markOrderAsPaidRequest = (payload: MarkOrderAsPaidPayload) => ({
   type: ORDERS_ACTIONS.MARK_ORDER_AS_PAID_REQUEST,
+  payload,
+});
+
+/**
+ * 放行訂單請求的參數
+ */
+export interface ApplyOrderPayload {
+  orderId: string;
+  onSuccess?: () => void;
+  onError?: (error: string) => void;
+}
+
+/**
+ * 請求放行訂單
+ */
+export const applyOrderRequest = (payload: ApplyOrderPayload) => ({
+  type: ORDERS_ACTIONS.APPLY_ORDER_REQUEST,
   payload,
 });

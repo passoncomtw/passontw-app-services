@@ -11,7 +11,7 @@ import OrderItem from './components/OrderItem';
 import logger from '@pkg/logger';
 
 type OrderCategory = 'ongoing' | 'completed';
-type OngoingTab = 'pending_payment' | 'pending_release' | 'dispute';
+type OngoingTab = 'pending_payment' | 'pending_release';
 type CompletedTab = 'completed' | 'cancelled';
 
 /**
@@ -78,17 +78,17 @@ export default function OrderListScreen() {
           return orderList.filter((order) => order.status === 0);
         case 'pending_release':
           return orderList.filter((order) => order.status === 1);
-        case 'dispute':
-          return orderList.filter((order) => order.status === 4);
         default:
           return [];
       }
     } else {
       switch (completedTab) {
         case 'completed':
-          return orderList.filter((order) => order.status === 2);
+          // 狀態 4: 已放行
+          return orderList.filter((order) => order.status === 4);
         case 'cancelled':
-          return orderList.filter((order) => order.status === 3);
+          // 狀態 2: 買家取消, 狀態 3: 賣家取消
+          return orderList.filter((order) => order.status === 2 || order.status === 3);
         default:
           return [];
       }
@@ -162,17 +162,6 @@ export default function OrderListScreen() {
                 待放行
               </Text>
             </Pressable>
-            <Pressable 
-              style={[styles.tab, ongoingTab === 'dispute' && styles.tabActive]}
-              onPress={() => setOngoingTab('dispute')}
-            >
-              <Text style={[
-                styles.tabText,
-                ongoingTab === 'dispute' && styles.tabTextActive
-              ]}>
-                申訴中
-              </Text>
-            </Pressable>
           </>
         ) : (
           <>
@@ -222,7 +211,7 @@ export default function OrderListScreen() {
               <Text style={styles.emptyTitle}>暫無訂單</Text>
               <Text style={styles.emptySubtitle}>
                 {category === 'ongoing'
-                  ? `目前沒有${ongoingTab === 'pending_payment' ? '待付款' : ongoingTab === 'pending_release' ? '待放行' : '申訴中'}的訂單`
+                  ? `目前沒有${ongoingTab === 'pending_payment' ? '待付款' : '待放行'}的訂單`
                   : `目前沒有${completedTab === 'completed' ? '已完成' : '已取消'}的訂單`}
               </Text>
             </View>
