@@ -3,86 +3,68 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { theme } from '@/theme';
-
-export interface Order {
-  id: string;
-  orderNumber: string;
-  type: number;
-  status: string;
-  statusType: 'pending_payment' | 'pending_release' | 'dispute' | 'completed' | 'cancelled';
-  amount: number;
-  totalPrice: number;
-  createdTime?: string;
-  completedTime?: string;
-  cancelledTime?: string;
-  statusMessage?: string;
-  cancelReason?: string;
-  // 付款資訊（銀行卡資訊）
-  bankCard?: {
-    bankName?: string;
-    cardNumber?: string;
-    branchName?: string;
-    cardHolderName?: string;
-  };
-}
+import { ORDER_STATUS_MAP } from '@/constants/orders';
+import { OrderItem as ApiOrderItem } from '@/interfaces';
 
 interface OrderItemProps {
-  order: Order;
+  order: ApiOrderItem;
   onPress: (orderId: string) => void;
 }
 
+const formatNumber = (num: number): string => {
+  if (num === undefined || num === null) {
+    return '0';
+  }
+  return num.toLocaleString('zh-TW');
+};
+
+// 根據狀態類型設置樣式（與訂單詳情頁面保持一致）
+const getStatusStyle = (status: number): { container: StyleProp<ViewStyle>, text: StyleProp<TextStyle> } => {
+  switch (status) {
+    case 2:
+      return {
+        container: styles.statusCompleted,
+        text: styles.statusTextCompleted,
+      };
+    case 3:
+      return {
+        container: styles.statusCancelled,
+        text: styles.statusTextCancelled,
+      };
+    case 4:
+      return {
+        container: styles.statusDispute,
+        text: styles.statusTextDispute,
+      };
+    case 1:
+      return {
+        container: styles.statusPendingRelease,
+        text: styles.statusTextPendingRelease,
+      };
+    case 0:
+    default:
+      return {
+        container: styles.statusPendingPayment,
+        text: styles.statusTextPendingPayment,
+      };
+  }
+};
+
 export default function OrderItem({ order, onPress }: OrderItemProps) {
-  const formatNumber = (num: number) => {
-    return num.toLocaleString('zh-TW');
-  };
-
-  // 根據狀態類型設置樣式（與訂單詳情頁面保持一致）
-  const getStatusStyle = () => {
-    switch (order.statusType) {
-      case 'completed':
-        return {
-          container: styles.statusCompleted,
-          text: styles.statusTextCompleted,
-        };
-      case 'cancelled':
-        return {
-          container: styles.statusCancelled,
-          text: styles.statusTextCancelled,
-        };
-      case 'dispute':
-        return {
-          container: styles.statusDispute,
-          text: styles.statusTextDispute,
-        };
-      case 'pending_release':
-        return {
-          container: styles.statusPendingRelease,
-          text: styles.statusTextPendingRelease,
-        };
-      case 'pending_payment':
-      default:
-        return {
-          container: styles.statusPendingPayment,
-          text: styles.statusTextPendingPayment,
-        };
-    }
-  };
-
-  const statusStyle = getStatusStyle();
+  
 
   // 根據狀態類型獲取時間標籤和值
   const getTimeLabel = () => {
-    if (order.cancelledTime) return '取消時間';
-    if (order.completedTime) return '完成時間';
+    if (order.finishAt) return '取消時間';
     return '創建時間';
   };
 
-  const getTimeValue = () => {
-    return order.cancelledTime || order.completedTime || order.createdTime;
-  };
-
+  const statusStyle = getStatusStyle(order.status);
+  const isBuyPendingOrder = order.pendingOrder.type === 0;
+  const bankCard = isBuyPendingOrder ? order.bankcard : order.pendingOrder.bankcard;
+  
   return (
     <Pressable
       style={({ pressed }) => [
@@ -94,18 +76,18 @@ export default function OrderItem({ order, onPress }: OrderItemProps) {
       {/* 訂單狀態 */}
       <View style={[styles.statusContainer, statusStyle.container]}>
         <Text style={[styles.statusText, statusStyle.text]}>
-          {order.status}
+          {ORDER_STATUS_MAP[order.status].label}
         </Text>
       </View>
 
       {/* 訂單詳情 */}
       <View style={styles.row}>
         <Text style={styles.label}>訂單編號</Text>
-        <Text style={styles.text}>{order.orderNumber}</Text>
+        <Text style={styles.text}>{order.id}</Text>
       </View>
       <View style={styles.row}>
         <Text style={styles.label}>掛單類型</Text>
-        <Text style={styles.text}>{order.type === 0 ? '買幣' : '賣幣'}</Text>
+        <Text style={styles.text}>{order.pendingOrder.type === 0 ? '買幣' : '賣幣'}</Text>
       </View>
       <View style={styles.row}>
         <Text style={styles.label}>數量</Text>
@@ -113,68 +95,30 @@ export default function OrderItem({ order, onPress }: OrderItemProps) {
       </View>
       <View style={styles.row}>
         <Text style={styles.label}>交易金額</Text>
-        <Text style={styles.text}>CNY ¥{formatNumber(order.totalPrice)}</Text>
+        <Text style={styles.text}>CNY ¥{formatNumber(order.amount)}</Text>
       </View>
       <View style={styles.row}>
         <Text style={styles.label}>{getTimeLabel()}</Text>
-        <Text style={styles.text}>{getTimeValue()}</Text>
+        <Text style={styles.text}>{order.createdAt}</Text>
       </View>
 
-      {/* 額外狀態訊息（待放行、申訴中） */}
-      {order.statusMessage && (
-        <View style={styles.row}>
-          <Text style={styles.label}>狀態</Text>
-          <Text style={[
-            styles.text,
-            order.statusType === 'pending_release' && styles.statusMessageOrange,
-            order.statusType === 'dispute' && styles.statusMessageDeepOrange,
-          ]}>
-            {order.statusMessage}
-          </Text>
-        </View>
-      )}
-
-      {/* 取消原因 */}
-      {order.cancelReason && (
-        <View style={styles.row}>
-          <Text style={styles.label}>取消原因</Text>
-          <Text style={styles.text}>{order.cancelReason}</Text>
-        </View>
-      )}
-
       {/* 付款資訊（銀行卡資訊） */}
-      {order.bankCard && (
         <>
           <View style={styles.divider} />
           <Text style={styles.sectionTitle}>付款資訊</Text>
-          {order.bankCard.bankName && (
             <View style={styles.row}>
               <Text style={styles.label}>銀行</Text>
-              <Text style={styles.text}>{order.bankCard.bankName}</Text>
-            </View>
-          )}
-          {order.bankCard.branchName && (
-            <View style={styles.row}>
-              <Text style={styles.label}>分行</Text>
-              <Text style={styles.text}>{order.bankCard.branchName}</Text>
-            </View>
-          )}
-          {order.bankCard.cardNumber && (
-            <View style={styles.row}>
-              <Text style={styles.label}>卡號</Text>
-              <Text style={[styles.text, styles.cardNumber]}>
-                {order.bankCard.cardNumber.replace(/(.{4})/g, '$1 ').trim()}
-              </Text>
-            </View>
-          )}
-          {order.bankCard.cardHolderName && (
-            <View style={styles.row}>
-              <Text style={styles.label}>戶名</Text>
-              <Text style={styles.text}>{order.bankCard.cardHolderName}</Text>
-            </View>
-          )}
+            <Text style={styles.text}>{bankCard.bank.bankName}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>卡號</Text>
+            <Text style={styles.text}>{bankCard.cardNumber}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>戶名</Text>
+            <Text style={styles.text}>{bankCard.name}</Text>
+          </View>
         </>
-      )}
     </Pressable>
   );
 }
@@ -253,12 +197,6 @@ const styles = StyleSheet.create({
     flex: 0.6,
     textAlign: 'right',
   },
-  statusMessageOrange: {
-    color: '#FF9800',
-  },
-  statusMessageDeepOrange: {
-    color: '#E65100',
-  },
   divider: {
     height: 1,
     backgroundColor: '#E5E5E5',
@@ -269,9 +207,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 10,
-  },
-  cardNumber: {
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
 });
 

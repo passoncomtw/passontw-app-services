@@ -3,14 +3,12 @@
  */
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, StatusBar, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, StatusBar, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchOrderListRequest } from '../../store/actions/ordersActions';
-import { fetchBuyOrdersRequest, fetchSellOrdersRequest } from '../../store/actions/marketActions';
-import OrderItem, { Order } from './components/OrderItem';
+import OrderItem from './components/OrderItem';
 import logger from '@pkg/logger';
-import type { Order as ApiOrder } from '@/apis/ordersApi';
 
 type OrderCategory = 'ongoing' | 'completed';
 type OngoingTab = 'pending_payment' | 'pending_release' | 'dispute';
@@ -19,88 +17,6 @@ type CompletedTab = 'completed' | 'cancelled';
 /**
  * 將 API 訂單轉換為 UI 訂單格式
  */
-function mapApiOrderToUIOrder(
-  apiOrder: ApiOrder,
-  buyOrders: any[],
-  sellOrders: any[],
-  currentUserId?: number
-): Order {
-  // 訂單狀態映射：0=待付款, 1=待放行, 2=已完成, 3=已取消, 4=申訴中
-  const statusMap: Record<number, { status: string; statusType: string }> = {
-    0: { status: '待付款', statusType: 'pending_payment' },
-    1: { status: '待放行', statusType: 'pending_release' },
-    2: { status: '已完成', statusType: 'completed' },
-    3: { status: '已取消', statusType: 'cancelled' },
-    4: { status: '申訴中', statusType: 'dispute' },
-  };
-
-  const statusInfo = statusMap[apiOrder.status] || { status: '未知', statusType: 'pending_payment' };
-  
-  // 判斷當前用戶是買方還是賣方
-  const isBuyer = apiOrder.userId === currentUserId;
-
-  // 格式化時間
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
-  };
-
-  // 從掛單列表中找對應的掛單（根據 orderId）
-  const allOrders = [...buyOrders, ...sellOrders];
-  const pendingOrder = allOrders.find((po) => po.id === apiOrder.orderId);
-
-  const uiOrder: Order = {
-    id: apiOrder.id,
-    orderNumber: apiOrder.id, // 使用訂單 ID 作為訂單編號
-    type: pendingOrder?.type ?? 0,  
-    status: statusInfo.status,
-    statusType: statusInfo.statusType as any,
-    amount: apiOrder.amount,
-    totalPrice: apiOrder.amount, // 假設 1:1 匯率
-    createdTime: formatDateTime(apiOrder.createdAt),
-  };
-
-  // 從掛單中取得銀行卡資訊
-  if (pendingOrder?.bankcard) {
-    uiOrder.bankCard = {
-      bankName: pendingOrder.bankcard.bank?.bankName,
-      cardNumber: pendingOrder.bankcard.cardNumber,
-      branchName: pendingOrder.bankcard.branchName,
-      cardHolderName: pendingOrder.bankcard.name,
-    };
-  }
-
-  // 根據狀態和用戶角色添加額外資訊
-  if (statusInfo.statusType === 'pending_payment') {
-    // 待付款狀態：根據用戶角色顯示不同訊息
-    if (isBuyer) {
-      uiOrder.statusMessage = '請付款給賣家';
-    } else {
-      uiOrder.statusMessage = '等待買方付款';
-    }
-  } else if (statusInfo.statusType === 'pending_release') {
-    // 待放行狀態：根據用戶角色顯示不同訊息
-    if (isBuyer) {
-      uiOrder.statusMessage = '等待賣方確認';
-    } else {
-      uiOrder.statusMessage = '等待確認放行';
-    }
-  } else if (statusInfo.statusType === 'dispute') {
-    uiOrder.statusMessage = '客服處理中，請耐心等待';
-  } else if (statusInfo.statusType === 'completed' && apiOrder.updatedAt) {
-    uiOrder.completedTime = formatDateTime(apiOrder.updatedAt);
-  } else if (statusInfo.statusType === 'cancelled' && apiOrder.updatedAt) {
-    uiOrder.cancelledTime = formatDateTime(apiOrder.updatedAt);
-    uiOrder.cancelReason = '訂單已取消';
-  }
-
-  return uiOrder;
-}
 
 export default function OrderListScreen() {
   const navigation = useNavigation();
@@ -139,8 +55,6 @@ export default function OrderListScreen() {
       isFetching.current = true;
       
       dispatch(fetchOrderListRequest({ size: 100, page: 1 })); // 取得較多筆數以涵蓋所有訂單
-      dispatch(fetchBuyOrdersRequest({ page: 1, size: 100 }));
-      dispatch(fetchSellOrdersRequest({ page: 1, size: 100 }));
     }, [dispatch, orderListLoading])
   );
 
@@ -156,35 +70,28 @@ export default function OrderListScreen() {
     (navigation as any).navigate('OrderDetail', { orderId });
   };
 
-  // 將 API 訂單轉換為 UI 訂單
-  const uiOrders = useMemo(() => {
-    return orderList.map((order) => mapApiOrderToUIOrder(order, buyOrders, sellOrders, user?.id));
-  }, [orderList, buyOrders, sellOrders, user?.id]);
-
   // 根據分類和 tab 顯示對應的訂單
   const displayOrders = useMemo(() => {
     if (category === 'ongoing') {
       switch (ongoingTab) {
         case 'pending_payment':
-          return uiOrders.filter((order) => order.statusType === 'pending_payment');
+          return orderList.filter((order) => order.status === 0);
         case 'pending_release':
-          return uiOrders.filter((order) => order.statusType === 'pending_release');
+          return orderList.filter((order) => order.status === 1);
         case 'dispute':
-          return uiOrders.filter((order) => order.statusType === 'dispute');
+          return orderList.filter((order) => order.status === 4);
         default:
           return [];
       }
     } else {
       switch (completedTab) {
         case 'completed':
-          return uiOrders.filter((order) => order.statusType === 'completed');
+          return orderList.filter((order) => order.status === 2);
         case 'cancelled':
-          return uiOrders.filter((order) => order.statusType === 'cancelled');
-        default:
-          return [];
+          return orderList.filter((order) => order.status === 3);
       }
     }
-  }, [category, ongoingTab, completedTab, uiOrders]);
+  }, [category, ongoingTab]);
 
   return (
     <View style={styles.container}>
@@ -294,44 +201,31 @@ export default function OrderListScreen() {
       </View>
 
       {/* 訂單列表 */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {orderListLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
-            <Text style={styles.loadingText}>載入中...</Text>
-          </View>
-        ) : orderListError ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{orderListError}</Text>
-            <Pressable
-              style={styles.retryButton}
-              onPress={() => dispatch(fetchOrderListRequest({ size: 100, page: 1 }))}
-            >
-              <Text style={styles.retryButtonText}>重試</Text>
-            </Pressable>
-          </View>
-        ) : displayOrders.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>😔</Text>
-            <Text style={styles.emptyTitle}>暫無訂單</Text>
-            <Text style={styles.emptySubtitle}>
-              {category === 'ongoing'
-                ? `目前沒有${ongoingTab === 'pending_payment' ? '待付款' : ongoingTab === 'pending_release' ? '待放行' : '申訴中'}的訂單`
-                : `目前沒有${completedTab === 'completed' ? '已完成' : '已取消'}的訂單`}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.orderList}>
-            {displayOrders.map((order) => (
-              <OrderItem
-                key={order.id}
-                order={order}
-                onPress={handleOrderPress}
-              />
-            ))}
-          </View>
+      <FlatList
+        data={displayOrders}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <OrderItem
+            order={item}
+            onPress={handleOrderPress}
+          />
         )}
-      </ScrollView>
+        contentContainerStyle={styles.orderList}
+        showsVerticalScrollIndicator={false}
+        onRefresh={() => dispatch(fetchOrderListRequest({ size: 100, page: 1 }))}
+        refreshing={orderListLoading}
+        ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>😔</Text>
+              <Text style={styles.emptyTitle}>暫無訂單</Text>
+              <Text style={styles.emptySubtitle}>
+                {category === 'ongoing'
+                  ? `目前沒有${ongoingTab === 'pending_payment' ? '待付款' : ongoingTab === 'pending_release' ? '待放行' : '申訴中'}的訂單`
+                  : `目前沒有${completedTab === 'completed' ? '已完成' : '已取消'}的訂單`}
+              </Text>
+            </View>
+        }
+      />
     </View>
   );
 }
@@ -404,46 +298,8 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: '600',
   },
-  content: {
-    flex: 1,
-  },
   orderList: {
     padding: 12,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#666',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 20,
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#F44336',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  retryButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
   },
   emptyContainer: {
     flex: 1,
