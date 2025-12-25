@@ -11,6 +11,7 @@ export const ORDERS_ACTIONS = {
   DELETE_PENDING_ORDER_REQUEST: 'orders/deletePendingOrderRequest',
   CREATE_ORDER_REQUEST: 'orders/createOrderRequest',
   FETCH_ORDER_LIST_REQUEST: 'orders/fetchOrderListRequest',
+  MARK_ORDER_AS_PAID_REQUEST: 'orders/markOrderAsPaidRequest',
 } as const;
 
 /**
@@ -77,4 +78,21 @@ export const createOrderRequest = (payload: CreateOrderPayload) => ({
 export const fetchOrderListRequest = (params?: GetOrdersParams) => ({
   type: ORDERS_ACTIONS.FETCH_ORDER_LIST_REQUEST,
   payload: params,
+});
+
+/**
+ * 標記訂單為已付款請求的參數
+ */
+export interface MarkOrderAsPaidPayload {
+  orderId: string;
+  onSuccess?: () => void;
+  onError?: (error: string) => void;
+}
+
+/**
+ * 請求標記訂單為已付款
+ */
+export const markOrderAsPaidRequest = (payload: MarkOrderAsPaidPayload) => ({
+  type: ORDERS_ACTIONS.MARK_ORDER_AS_PAID_REQUEST,
+  payload,
 });

@@ -4,7 +4,7 @@ import { PayloadAction } from '@reduxjs/toolkit';
 import logger from '@pkg/logger';
 import { handleSagaError } from '@pkg/utils/sagaHelpers';
 import { ordersApi } from '@/apis';
-import { ORDERS_ACTIONS, CreatePendingOrderPayload, DeletePendingOrderPayload, CreateOrderPayload } from '../actions/ordersActions';
+import { ORDERS_ACTIONS, CreatePendingOrderPayload, DeletePendingOrderPayload, CreateOrderPayload, MarkOrderAsPaidPayload } from '../actions/ordersActions';
 import {
   fetchOrdersStart,
   fetchOrdersSuccess,
@@ -21,6 +21,9 @@ import {
   fetchOrderListStart,
   fetchOrderListSuccess,
   fetchOrderListFailure,
+  markOrderAsPaidStart,
+  markOrderAsPaidSuccess,
+  markOrderAsPaidFailure,
 } from '../slices/ordersSlice';
 
 /**
@@ -205,6 +208,44 @@ function* fetchOrderListSaga(action: PayloadAction<any>): SagaIterator {
 }
 
 /**
+ * Mark Order As Paid Saga
+ * 標記訂單為已付款
+ * 
+ * 支援 onSuccess 和 onError 回調函數，讓 UI 可以在 API 完成後執行特定邏輯
+ */
+function* markOrderAsPaidSaga(action: PayloadAction<MarkOrderAsPaidPayload>): SagaIterator {
+  const { orderId, onSuccess, onError } = action.payload;
+
+  // 步驟 1: 開始標記已付款（設置 loading 狀態）
+  yield put(markOrderAsPaidStart());
+
+  try {
+    // 步驟 2: 使用 httpClient 呼叫標記已付款 API
+    yield call(ordersApi.markOrderAsPaid, orderId);
+
+    logger.info('標記訂單為已付款成功', {
+      orderId,
+    });
+
+    // 步驟 3: 更新 Redux State 中該訂單的狀態為 1（已付款等待放行）
+    yield put(markOrderAsPaidSuccess(orderId));
+
+    // 步驟 4: 調用成功回調（如果有提供）
+    if (onSuccess) {
+      onSuccess();
+    }
+  } catch (error: any) {
+    const errorResult = handleSagaError(error, '標記訂單為已付款失敗', { orderId });
+    
+    yield put(markOrderAsPaidFailure(errorResult));
+    
+    if (onError) {
+      onError(errorResult.message);
+    }
+  }
+}
+
+/**
  * Watcher Saga
  * 監聽特定的 action 並觸發對應的 saga
  */
@@ -215,5 +256,6 @@ export function* watchOrdersSagas(): SagaIterator {
   yield takeLatest(ORDERS_ACTIONS.DELETE_PENDING_ORDER_REQUEST, deletePendingOrderSaga);
   yield takeLatest(ORDERS_ACTIONS.CREATE_ORDER_REQUEST, createOrderSaga);
   yield takeLatest(ORDERS_ACTIONS.FETCH_ORDER_LIST_REQUEST, fetchOrderListSaga);
+  yield takeLatest(ORDERS_ACTIONS.MARK_ORDER_AS_PAID_REQUEST, markOrderAsPaidSaga);
 }
 

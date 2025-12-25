@@ -5,10 +5,13 @@ import { formatDateTime } from '@/utils/formatUtils';
 import { OrderItem } from '@/interfaces';
 import { ORDER_STATUS_MAP } from '@/constants/orders';
 import { User } from '@/interfaces/store';
+import { useAppDispatch } from '@/navigation/store/hooks';
+import type { AppDispatch } from '@/navigation/store/configureStore';
+import { markOrderAsPaidRequest } from '@/navigation/store/actions/ordersActions';
 
 const validateNeedToPay = (isBuyPendingOrder: boolean, user: User, order: OrderItem): boolean => {
   if (isBuyPendingOrder) {
-    if (order.status === 0) return true;
+    if (order.status === 0 && user.id === order.user.id) return true;
     return false
   }
   
@@ -16,11 +19,39 @@ const validateNeedToPay = (isBuyPendingOrder: boolean, user: User, order: OrderI
   return false;
 }
 
-const Footer = (props: { needToPay: boolean }) => {
-  const { needToPay } = props;
+const Footer = (props: { needToPay: boolean; orderId: string; dispatch: AppDispatch }) => {
+  const { needToPay, orderId, dispatch } = props;
+  
+  const handleMarkAsPaid = () => {
+    Alert.alert(
+      '確認付款',
+      '確認已完成匯款？',
+      [
+        {
+          text: '取消',
+          style: 'cancel',
+        },
+        {
+          text: '確認',
+          onPress: () => {
+            dispatch(markOrderAsPaidRequest({
+              orderId,
+              onSuccess: () => {
+                Alert.alert('成功', '已標記為已付款');
+              },
+              onError: (error) => {
+                Alert.alert('錯誤', error || '標記付款失敗');
+              },
+            }));
+          },
+        },
+      ]
+    );
+  };
+
   if (needToPay) {
     return ( <View style={styles.buttonContainer}>
-      <Pressable style={styles.buttonPrimary} onPress={() => Alert.alert('匯款已完成')}>
+      <Pressable style={styles.buttonPrimary} onPress={handleMarkAsPaid}>
         <Text style={styles.buttonPrimaryText}>匯款已完成</Text>
       </Pressable>
     </View>)
@@ -35,6 +66,7 @@ const Footer = (props: { needToPay: boolean }) => {
 }
 const OrderContent = (props: { order: OrderItem, user: User }) => {
   const { order, user } = props;
+  const dispatch = useAppDispatch();
 
   const isBuyPendingOrder = order.pendingOrder.type === 0;
   const needToPay = validateNeedToPay(isBuyPendingOrder, user, order);
@@ -137,7 +169,7 @@ const OrderContent = (props: { order: OrderItem, user: User }) => {
         </>
       </View>
 
-      <Footer needToPay={needToPay} />
+      <Footer needToPay={needToPay} orderId={order.id} dispatch={dispatch} />
     </View>
   )
 }

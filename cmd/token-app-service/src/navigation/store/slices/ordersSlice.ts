@@ -151,6 +151,21 @@ const ordersSlice = createSlice({
     clearOrderListError(state) {
       state.orderListError = null;
     },
+    // 標記訂單為已付款相關 reducers
+    markOrderAsPaidStart(state) {
+      // 可以添加 loading 狀態，如果需要
+    },
+    markOrderAsPaidSuccess(state, action: PayloadAction<string>) {
+      // 更新訂單列表中對應訂單的狀態為 1（已付款等待放行）
+      const orderId = action.payload;
+      const order = state.orderList.find((o) => o.id === orderId);
+      if (order) {
+        order.status = 1;
+      }
+    },
+    markOrderAsPaidFailure(state, action: PayloadAction<SagaErrorResult>) {
+      // 可以添加錯誤處理，如果需要
+    },
     resetOrders() {
       // 重置為初始狀態（用於登出）
       return initialState;
@@ -179,6 +194,9 @@ export const {
   fetchOrderListSuccess,
   fetchOrderListFailure,
   clearOrderListError,
+  markOrderAsPaidStart,
+  markOrderAsPaidSuccess,
+  markOrderAsPaidFailure,
   resetOrders,
 } = ordersSlice.actions;
 
