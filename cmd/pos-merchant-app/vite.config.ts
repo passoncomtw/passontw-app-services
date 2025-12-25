@@ -26,6 +26,11 @@ export default defineConfig({
         : {},
     }),
   ],
+  resolve: {
+    alias: {
+      '@pkg': path.resolve(__dirname, '../../pkg'),
+    },
+  },
   build: {
     // 優化 Rollup 配置以避免 "too many open files" 錯誤
     rollupOptions: {
