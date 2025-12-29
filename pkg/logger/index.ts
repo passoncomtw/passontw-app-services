@@ -26,22 +26,23 @@ interface LoggerConfig {
 
 /**
  * 從環境變數讀取日誌級別
- * 支援多種環境：Node.js、Expo、Vite
+ * 支援多種環境：Node.js、Expo/React Native、Vite（僅在支援的環境中）
  */
 const getLogLevelFromEnv = (): LogLevel => {
   let envLevel: string | undefined;
 
   // 檢查不同環境的環境變數
   if (typeof process !== 'undefined' && process.env) {
-    // Node.js 或 Electron 環境
+    // Node.js、Electron 或 Expo/React Native 環境
     envLevel = process.env.EXPO_PUBLIC_LOG_LEVEL || process.env.LOG_LEVEL;
-  } else if (typeof import.meta !== 'undefined' && import.meta.env) {
-    // Vite 環境
-    envLevel = import.meta.env.VITE_LOG_LEVEL || import.meta.env.EXPO_PUBLIC_LOG_LEVEL;
-  } else if (typeof window !== 'undefined' && (window as any).__ENV__) {
-    // 其他瀏覽器環境（如果有注入環境變數）
-    const windowEnv = (window as any).__ENV__;
-    envLevel = windowEnv.EXPO_PUBLIC_LOG_LEVEL || windowEnv.LOG_LEVEL;
+  } else if (typeof window !== 'undefined') {
+    // 瀏覽器環境
+    // 檢查是否有注入的環境變數（Vite 或其他工具）
+    if ((window as any).__ENV__) {
+      const windowEnv = (window as any).__ENV__;
+      envLevel = windowEnv.EXPO_PUBLIC_LOG_LEVEL || windowEnv.LOG_LEVEL || windowEnv.VITE_LOG_LEVEL;
+    }
+    // 注意：在 React Native/Expo 環境中不使用 import.meta，因為 Hermes 不支援
   }
   
   if (!envLevel) {
@@ -49,7 +50,6 @@ const getLogLevelFromEnv = (): LogLevel => {
     // 檢查是否為開發環境
     const isDev = 
       (typeof __DEV__ !== 'undefined' && __DEV__) ||
-      (typeof import.meta !== 'undefined' && import.meta.env?.DEV) ||
       (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development');
     
     return isDev ? LogLevel.DEBUG : LogLevel.WARN;
@@ -67,7 +67,6 @@ const getLogLevelFromEnv = (): LogLevel => {
   const upperEnvLevel = envLevel.toUpperCase();
   const isDev = 
     (typeof __DEV__ !== 'undefined' && __DEV__) ||
-    (typeof import.meta !== 'undefined' && import.meta.env?.DEV) ||
     (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development');
   
   return levelMap[upperEnvLevel] ?? (isDev ? LogLevel.DEBUG : LogLevel.WARN);

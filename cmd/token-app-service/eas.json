@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 5.9.0"
+    "version": ">= 5.9.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -19,18 +20,20 @@
     "production": {
       "distribution": "store",
       "ios": {
-        "simulator": false
+        "simulator": false,
+        "credentialsSource": "remote"
       }
     }
   },
   "submit": {
     "production": {
       "ios": {
-        "appleId": "your-apple-id@example.com",
-        "ascAppId": "your-app-id",
-        "appleTeamId": "your-team-id"
+        "appleId": "horsekit1982@gmail.com",
+        "ascAppId": "6477443899",
+        "appleTeamId": "W6K7F9HNX5"
       }
     }
-  }
+  },
+  "$schema": "https://json.schemastore.org/eas.json"
 }
 

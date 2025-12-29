@@ -12,7 +12,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.passon.ecoinwallet",
       "icon": "./src/assets/images/ios-icon.png",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.passon.ecoinwallet",
@@ -36,6 +39,11 @@
           "imageWidth": 200
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "869a711e-70db-4ee7-9c62-bda2aec26ce0"
+      }
+    }
   }
 }
