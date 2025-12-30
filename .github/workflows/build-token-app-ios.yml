@@ -43,36 +43,68 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN_TOKEN_APP }}
 
-      - name: 🔐 Configure Apple Credentials
-        uses: expo/apple-credentials@v1
-        with:
-          bundle-identifier: com.passon.ecoinwallet
-          apple-id: ${{ secrets.APPLE_ID_TOKEN_APP }}
-          app-specific-password: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          team-id: ${{ secrets.APPLE_TEAM_ID }}
-
       - name: 🏗️ Build iOS with EAS
         working-directory: ./cmd/token-app-service
+        id: build
         run: |
           eas build --platform ios \
             --profile production \
             --non-interactive \
-            --no-wait
+            --auto-submit
 
       - name: ⏳ Wait for build to complete
         working-directory: ./cmd/token-app-service
+        id: wait-build
         run: |
           echo "Waiting for build to complete..."
           # 等待幾秒讓構建開始
           sleep 10
-          # 取得最新的構建 ID
-          BUILD_ID=$(eas build:list --platform ios --limit 1 --json | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+          
+          # 取得最新的構建 ID 和 URL
+          BUILD_JSON=$(eas build:list --platform ios --limit 1 --json)
+          BUILD_ID=$(echo $BUILD_JSON | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+          
           if [ -z "$BUILD_ID" ]; then
             echo "Error: Could not find build ID"
             exit 1
           fi
+          
           echo "Build ID: $BUILD_ID"
+          echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
+          
+          # 等待建置完成
           eas build:wait --id $BUILD_ID --timeout 3600
+          
+          # 建置完成後，取得完整的建置資訊
+          BUILD_INFO=$(eas build:view --id $BUILD_ID --json 2>/dev/null || eas build:list --platform ios --limit 1 --json)
+          
+          # 嘗試從 JSON 中提取 URL（多種可能的格式）
+          BUILD_URL=$(echo $BUILD_INFO | grep -o '"artifacts":{"buildUrl":"[^"]*"' | cut -d'"' -f6)
+          
+          if [ -z "$BUILD_URL" ]; then
+            BUILD_URL=$(echo $BUILD_INFO | grep -o '"url":"[^"]*"' | head -1 | cut -d'"' -f4)
+          fi
+          
+          if [ -z "$BUILD_URL" ]; then
+            BUILD_URL=$(echo $BUILD_INFO | grep -o '"buildUrl":"[^"]*"' | head -1 | cut -d'"' -f4)
+          fi
+          
+          # 如果還是找不到，使用預設格式（從 EAS 專案 ID 構建）
+          if [ -z "$BUILD_URL" ]; then
+            # 從 app.json 或 eas.json 取得專案資訊
+            PROJECT_ID=$(grep -o '"projectId":"[^"]*"' app.json eas.json 2>/dev/null | head -1 | cut -d'"' -f4 || echo "869a711e-70db-4ee7-9c62-bda2aec26ce0")
+            BUILD_URL="https://expo.dev/accounts/tomas/projects/token-app-service/builds/$BUILD_ID"
+          fi
+          
+          echo "Build URL: $BUILD_URL"
+          echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
+          
+          # 將建置資訊寫入檔案
+          echo "Build ID: $BUILD_ID" > build-info.txt
+          echo "Build URL: $BUILD_URL" >> build-info.txt
+          echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> build-info.txt
+          echo "Platform: iOS" >> build-info.txt
+          echo "Profile: production" >> build-info.txt
 
       - name: 📤 Submit to TestFlight
         working-directory: ./cmd/token-app-service
@@ -84,12 +116,28 @@ jobs:
             --app-specific-password ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }} \
             --asc-app-id ${{ secrets.APPLE_APP_ID_TOKEN_APP }}
 
-      - name: 📊 Upload build logs
+      - name: 📝 Create build summary
+        if: always()
+        run: |
+          echo "## 🏗️ iOS Build Information" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Build ID | \`${{ steps.wait-build.outputs.build_id }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build URL | [${{ steps.wait-build.outputs.build_url }}](${{ steps.wait-build.outputs.build_url }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | ✅ Completed |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📥 Download" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "You can download the build from: [${{ steps.wait-build.outputs.build_url }}](${{ steps.wait-build.outputs.build_url }})" >> $GITHUB_STEP_SUMMARY
+
+      - name: 📊 Upload build logs and info
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ios-build-logs
+          name: ios-build-info
           path: |
             ./cmd/token-app-service/.eas/**
+            ./cmd/token-app-service/build-info.txt
           retention-days: 30
 
