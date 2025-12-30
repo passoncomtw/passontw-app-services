@@ -130,32 +130,112 @@ eas login
 
 ### 步驟 2: App Store Connect 設定
 
-#### 2.1 建立 App 記錄
+#### 2.1 前置條件檢查
 
-1. 登入 [App Store Connect](https://appstoreconnect.apple.com/)
-2. 選擇您的團隊
-3. 點擊「Apps」標籤
-4. 點擊藍色「+」按鈕，選擇「New App」
-5. 填寫以下資訊：
-   - **App Name**: E幣錢包
-   - **Primary Language**: 繁體中文
-   - **Bundle ID**: `com.passon.ecoinwallet`（必須與 `app.json` 中的 `bundleIdentifier` 一致）
-   - **SKU**: 可以是任何唯一字串（例如：`com.passon.ecoinwallet`）
-6. 點擊「Create」建立應用程式記錄
+在建立 App 記錄之前，必須先確保：
 
-#### 2.2 取得 App Store Connect App ID (ascAppId)
+1. ✅ **Apple Developer 帳號已啟用**
+2. ✅ **Bundle ID 已在 Apple Developer Portal 註冊**
+   - 前往：https://developer.apple.com/account/resources/identifiers/list
+   - 確認有 `com.passon.ecoinwallet` 這個 App ID
+   - 確認 App ID 的狀態是「Active」
+
+#### 2.2 確認 App Store Connect 中是否有 App 記錄
+
+**立即檢查**：
+
+1. 前往 [App Store Connect](https://appstoreconnect.apple.com/)
+2. 使用 Apple ID 登入：`horsekit1982@gmail.com`
+3. 點擊「我的 App」或「Apps」
+4. 查看是否有 Bundle ID 為 `com.passon.ecoinwallet` 的 App
+
+**如果已有 App 記錄**：
+- 確認 Bundle ID 是否為 `com.passon.ecoinwallet`（必須完全一致）
+- 確認 Apple ID（App Store Connect App ID）是否為 `****`
+- 確認您的 Apple ID 是否有權限存取該 App
+
+**如果沒有 App 記錄** → 請繼續下面的「建立 App 記錄」步驟
+
+#### 2.3 建立 App 記錄
+
+1. **登入 App Store Connect**
+   - 網址：https://appstoreconnect.apple.com/
+   - 使用 Apple ID：`horsekit1982@gmail.com`
+
+2. **建立新 App**
+   - 點擊藍色「+」按鈕
+   - 選擇「New App」
+
+3. **填寫 App 資訊**
+   ```
+   Platform: iOS
+   Name: E幣錢包
+   Primary Language: 繁體中文
+   Bundle ID: com.passon.ecoinwallet
+   SKU: com.passon.ecoinwallet
+   ```
+
+4. **重要注意事項**
+   - **Bundle ID 必須完全一致**：`com.passon.ecoinwallet`（區分大小寫，不能有空格）
+   - **SKU** 可以是任何唯一字串，建議使用 Bundle ID
+   - **Name** 可以之後修改，但 Bundle ID 建立後無法更改
+
+5. **點擊「Create」**
+
+6. **記下 Apple ID（App Store Connect App ID）**
+   - 建立後，在「App 資訊」頁面找到「Apple ID」
+   - 確認這個 ID 是 `****`（應該與 `eas.json` 中的 `ascAppId` 一致）
+
+#### 2.4 取得 App Store Connect App ID (ascAppId)
 
 1. 在 App Store Connect 中選擇您的應用程式
 2. 確保「App Store」標籤處於活動狀態
 3. 在左側面板的「General」區段下，選擇「App Information」
 4. 在「General Information」區段中找到「Apple ID」
-5. 複製這個 Apple ID（例如：`6477443899`）
+5. 複製這個 Apple ID（例如：`****`）
 
 > **注意**：此 ID 已配置在 `eas.json` 的 `submit.production.ios.ascAppId` 中
 
 ### 步驟 3: 配置憑證
 
-#### 方法一：使用 EAS 管理憑證（推薦）
+#### 方法一：使用 App Store Connect API Key（推薦，更穩定）
+
+App Store Connect API Key 比 App-Specific Password 更穩定，特別是在 CI/CD 環境中。
+
+**建立 API Key**：
+1. 前往 [App Store Connect](https://appstoreconnect.apple.com/)
+2. 點擊「使用者與存取權限」
+3. 選擇「金鑰」標籤
+4. 點擊「產生 API 金鑰」
+5. 輸入金鑰名稱（例如：`EAS Submit`）
+6. 選擇「App Manager」或「Admin」角色
+7. 點擊「產生」
+8. **下載 `.p8` 檔案**（只會顯示一次，請妥善保存）
+9. **複製 Key ID** 和 **Issuer ID**
+
+**配置 API Key**：
+
+在 `eas.json` 中配置（或使用環境變數）：
+
+```json
+{
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "****",
+        "appleTeamId": "****",
+        "ascApiKeyPath": "./AuthKey_XXXXXXXXXX.p8",
+        "ascApiKeyIssuerId": "your-issuer-id",
+        "ascApiKeyId": "your-key-id"
+      }
+    }
+  }
+}
+```
+
+> **注意**：`.p8` 檔案應該放在專案目錄中，並添加到 `.gitignore`（不要提交到 Git）
+
+#### 方法二：使用 EAS 管理憑證
 
 ```bash
 cd cmd/token-app-service
@@ -168,9 +248,9 @@ eas credentials --platform ios
 3. 選擇「App Store Connect: Manage your API Key」
 4. 選擇「Set up your project to use an API Key for EAS Submit」
 
-#### 方法二：使用 App-Specific Password
+#### 方法三：使用 App-Specific Password
 
-如果您想使用 App-Specific Password：
+如果使用 App-Specific Password：
 
 1. 在 Apple ID 帳號設定中建立 App-Specific Password（參考[步驟 3: 建立 App-Specific Password](#步驟-3-建立-app-specific-password)）
 2. 在 `eas.json` 中已配置 `appleId` 欄位
@@ -179,6 +259,8 @@ eas credentials --platform ios
 ```bash
 export EXPO_APPLE_APP_SPECIFIC_PASSWORD="your-app-specific-password"
 ```
+
+> **注意**：App-Specific Password 在某些情況下可能不穩定，建議使用 API Key
 
 ### 步驟 4: 建置和提交
 
@@ -217,9 +299,9 @@ export EXPO_APPLE_APP_SPECIFIC_PASSWORD="your-app-specific-password"
   "submit": {
     "production": {
       "ios": {
-        "appleId": "horsekit1982@gmail.com",
-        "ascAppId": "6477443899",
-        "appleTeamId": "W6K7F9HNX5"
+        "appleId": "your-email@example.com",
+        "ascAppId": "****",
+        "appleTeamId": "****"
       }
     }
   }
@@ -244,7 +326,7 @@ export EXPO_APPLE_APP_SPECIFIC_PASSWORD="your-app-specific-password"
 
 ```bash
 cd cmd/token-app-service
-eas build --platform ios --profile production --non-interactive
+eas build --platform ios --profile production --non-interactive --auto-submit
 ```
 
 此命令會：
@@ -320,7 +402,7 @@ eas submit --platform ios --profile production
 3. 在右上角點擊您的帳號名稱
 4. 在「Membership」區塊中找到 **Team ID**
 
-**範例**：`W6K7F9HNX5`
+**範例**：`****`
 
 #### 2.3 App ID (ASC App ID)
 
@@ -330,7 +412,7 @@ eas submit --platform ios --profile production
 4. 選擇您的 App
 5. 在「App 資訊」頁面，找到 **Apple ID**（這是 App Store Connect App ID）
 
-**範例**：`6477443899`
+**範例**：`****`
 
 > 📝 **注意**：如果還沒有建立 App，請先到 App Store Connect 建立一個新的 App（參考[步驟 2: App Store Connect 設定](#步驟-2-app-store-connect-設定)）。
 
@@ -395,14 +477,14 @@ App-Specific Password 用於自動化上傳到 TestFlight，不需要兩步驟�
 
 - **Name**: `APPLE_TEAM_ID`
 - **Value**: 從步驟 2.2 取得的 Team ID
-- **範例**: `W6K7F9HNX5`
+- **範例**: `****`
 - **說明**: **共用 Secret** - 所有 app 共用同一個 Team ID
 
 ##### 4.2.5 APPLE_APP_ID_TOKEN_APP
 
 - **Name**: `APPLE_APP_ID_TOKEN_APP`
 - **Value**: 從步驟 2.3 取得的 App Store Connect App ID
-- **範例**: `6477443899`
+- **範例**: `****`
 - **說明**: 每個 app 都有唯一的 App ID
 
 #### 4.3 驗證 Secrets
@@ -564,15 +646,148 @@ git push origin v1.0.0
 2. 確認您的 Apple ID 是該 Team 的成員
 3. 前往 [Apple Developer](https://developer.apple.com/account/) 確認 Team ID
 
-### ❌ 錯誤：`App not found in App Store Connect`
+### ❌ 錯誤：`App not found in App Store Connect` 或 `No suitable application records were found`
 
-**原因**：App 尚未在 App Store Connect 建立，或 App ID 錯誤。
+**錯誤訊息範例**：
+```
+No suitable application records were found. Verify your bundle identifier 
+"com.passon.ecoinwallet" is correct and that you are signed in with an Apple ID 
+that has access to the app in App Store Connect. App Store operation failed. (-19000)
+```
+
+**原因**：App 尚未在 App Store Connect 建立，或 Bundle ID/App ID 不匹配，或權限問題。
 
 **解決方法**：
+
+#### 步驟 1: 確認 App Store Connect 中已建立 App
+
 1. 前往 [App Store Connect](https://appstoreconnect.apple.com/)
-2. 確認 App 已建立
-3. 確認 App Store Connect App ID 是正確的
-4. 確認 Bundle ID 與 `app.json` 中的設定一致
+2. 登入您的 Apple ID（`horsekit1982@gmail.com`）
+3. 點擊「我的 App」
+4. 確認是否有 Bundle ID 為 `com.passon.ecoinwallet` 的 App
+
+**如果沒有 App 記錄**：
+1. 點擊藍色「+」按鈕，選擇「New App」
+2. 填寫以下資訊：
+   - **App Name**: E幣錢包
+   - **Primary Language**: 繁體中文
+   - **Bundle ID**: `com.passon.ecoinwallet`（必須與 `app.json` 中的 `bundleIdentifier` 完全一致）
+   - **SKU**: `com.passon.ecoinwallet`（或任何唯一字串）
+3. 點擊「Create」建立應用程式記錄
+4. 建立後，記下 **Apple ID**（App Store Connect App ID，例如：`****`）
+
+#### 步驟 2: 確認 Bundle ID 完全一致
+
+確認以下位置的 Bundle ID 完全一致（區分大小寫）：
+
+- `app.json` 中的 `expo.ios.bundleIdentifier`: `com.passon.ecoinwallet`
+- App Store Connect 中的 Bundle ID: `com.passon.ecoinwallet`
+- Apple Developer Portal 中的 App ID: `com.passon.ecoinwallet`
+
+#### 步驟 3: 確認 Apple ID 權限
+
+1. 確認使用的 Apple ID（`horsekit1982@gmail.com`）有權限存取該 App
+2. 在 App Store Connect 中，確認該 Apple ID 是：
+   - **Account Holder**（帳號持有人）
+   - **Admin**（管理員）
+   - 或至少是 **App Manager**（App 管理員）
+
+#### 步驟 4: 確認 App Store Connect App ID
+
+1. 在 App Store Connect 中選擇您的 App
+2. 點擊「App 資訊」
+3. 在「General Information」區段中找到 **Apple ID**
+4. 確認這個 ID 與 `eas.json` 中的 `ascAppId` 一致
+
+#### 步驟 5: 確認 API Key 權限
+
+從您的建置日誌中看到已經使用了 App Store Connect API Key：
+- Key ID: `****`
+- Key Name: `[Expo] EAS Submit ****`
+
+**確認 API Key 權限**：
+
+1. 前往 [App Store Connect](https://appstoreconnect.apple.com/)
+2. 點擊「使用者與存取權限」→「金鑰」
+3. 找到 Key ID: `****`
+4. 確認：
+   - 角色是「App Manager」或「Admin」
+   - API Key 可以存取 Bundle ID 為 `com.passon.ecoinwallet` 的 App
+   - 如果 API Key 是「Admin」角色，應該可以存取所有 App
+   - 如果 API Key 是「App Manager」角色，需要確認該 App 在可存取列表中
+
+**如果 API Key 權限不足**：
+- 刪除舊的 API Key
+- 建立新的 API Key，選擇「Admin」角色（確保可以存取所有 App）
+- 或確認該 App 在 API Key 的可存取列表中
+- 重新配置 EAS 憑證：`eas credentials --platform ios`
+
+#### 步驟 6: 使用 App Store Connect API Key（如果尚未使用）
+
+如果目前使用 App-Specific Password，建議改用 App Store Connect API Key：
+
+1. 前往 [App Store Connect](https://appstoreconnect.apple.com/)
+2. 點擊「使用者與存取權限」
+3. 選擇「金鑰」標籤
+4. 點擊「產生 API 金鑰」
+5. 輸入金鑰名稱（例如：`EAS Submit`）
+6. 選擇「Admin」角色（推薦，可以存取所有 App）
+7. 點擊「產生」
+8. **下載 `.p8` 檔案**（只會顯示一次，請妥善保存）
+9. **複製 Key ID** 和 **Issuer ID**
+
+然後在 `eas.json` 中配置：
+
+```json
+{
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "****",
+        "appleTeamId": "****",
+        "ascApiKeyPath": "./path/to/AuthKey_XXXXXXXXXX.p8",
+        "ascApiKeyIssuerId": "your-issuer-id",
+        "ascApiKeyId": "your-key-id"
+      }
+    }
+  }
+}
+```
+
+或在環境變數中設定：
+- `EXPO_APPLE_ASC_API_KEY_PATH`
+- `EXPO_APPLE_ASC_API_KEY_ISSUER_ID`
+- `EXPO_APPLE_ASC_API_KEY_ID`
+
+> **注意**：EAS 也可以自動管理 API Key，如果已經透過 `eas credentials` 設定，則不需要手動配置。
+
+#### 步驟 7: 重新提交（如果之前提交失敗）
+
+確認以上所有步驟後，可以重新提交：
+
+```bash
+cd cmd/token-app-service
+eas submit --platform ios --latest --non-interactive
+```
+
+或使用建置好的版本：
+
+```bash
+eas submit --platform ios --id <build-id> --non-interactive
+```
+
+#### 步驟 8: 如果問題仍然存在
+
+如果確認所有項目都正確，但問題仍然存在，請檢查：
+
+1. **Apple Developer Portal 中的 App ID**
+   - 確認 `com.passon.ecoinwallet` 已正確註冊
+   - 確認 App ID 的狀態是「Active」
+   - 前往：https://developer.apple.com/account/resources/identifiers/list
+
+2. **聯絡 Apple 支援**
+   - 如果所有配置都正確，可能是 Apple 端的問題
+   - 可以透過 App Store Connect 的「聯絡我們」功能尋求協助
 
 ### ❌ 錯誤：`Build failed: Provisioning profile not found`
 
@@ -666,9 +881,18 @@ git push origin v1.0.0
 ### 基本設定
 - [ ] Apple Developer 帳號已啟用
 - [ ] Expo 帳號已建立並登入
-- [ ] App Store Connect 中已建立 App 記錄
-- [ ] `app.json` 中的 `bundleIdentifier` 正確
-- [ ] `eas.json` 中的 `ascAppId` 正確
+- [ ] **App Store Connect 中已建立 App 記錄**（重要！）
+  - [ ] 已登入 App Store Connect 確認 App 存在
+  - [ ] Bundle ID 為 `com.passon.ecoinwallet`
+  - [ ] App Store Connect App ID 為 `****`
+- [ ] **Bundle ID 在所有位置完全一致**（區分大小寫，不能有空格）
+  - [ ] `app.json` 中的 `bundleIdentifier`: `com.passon.ecoinwallet`
+  - [ ] App Store Connect 中的 Bundle ID: `com.passon.ecoinwallet`
+  - [ ] Apple Developer Portal 中的 App ID: `com.passon.ecoinwallet`
+- [ ] `eas.json` 中的 `ascAppId` 正確：`****`
+- [ ] **使用的 Apple ID 有權限存取 App Store Connect 中的 App**
+  - [ ] `horsekit1982@gmail.com` 有權限存取 App Store Connect
+  - [ ] 該 Apple ID 是 Account Holder、Admin 或 App Manager
 
 ### 手動上傳
 - [ ] 已安裝並登入 EAS CLI
@@ -682,10 +906,17 @@ git push origin v1.0.0
 - [ ] `pkg` 目錄中的模組不使用 `import.meta`（React Native 不支援）
 - [ ] 共用模組（如 `@pkg/logger`）已針對 React Native 環境優化
 
+### API Key 和憑證
+- [ ] App Store Connect API Key 已建立（如果使用）
+  - [ ] API Key 角色是「App Manager」或「Admin」
+  - [ ] API Key 可以存取 Bundle ID 為 `com.passon.ecoinwallet` 的 App
+  - [ ] 如果使用 EAS 管理，已透過 `eas credentials --platform ios` 設定
+- [ ] 憑證已正確配置（使用 `credentialsSource: "remote"`）
+
 ### 自動化部署
 - [ ] Expo Access Token 已建立並設定到 GitHub Secrets
 - [ ] Apple Developer 資訊已取得
-- [ ] App-Specific Password 已建立並設定到 GitHub Secrets
+- [ ] App-Specific Password 已建立並設定到 GitHub Secrets（如果使用）
 - [ ] 所有 GitHub Secrets 都已正確設定
 - [ ] GitHub Actions Workflow 檔案已存在
 - [ ] Workflow 中使用 `--non-interactive` 標誌
