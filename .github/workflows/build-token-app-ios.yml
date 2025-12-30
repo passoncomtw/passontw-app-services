@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
@@ -38,19 +40,23 @@ jobs:
       - name: 📦 Install dependencies
         working-directory: ./cmd/token-app-service
         run: |
-          yarn install --frozen-lockfile
-          # 確保 expo-asset 已安裝
-          yarn add expo-asset@~12.0.3 || true
+          yarn install --frozen-lockfile || yarn install
 
-      - name: ✅ Verify Expo configuration
+      - name: 🔢 Set build number from Git commit
         working-directory: ./cmd/token-app-service
+        id: set-build-number
         run: |
-          echo "Verifying Expo configuration..."
-          npx expo config --type public || {
-            echo "Warning: expo config failed, but continuing..."
-            echo "This might be due to missing optional dependencies"
-          }
-          echo "Expo configuration check completed"
+          GIT_COMMIT_SHORT=$(git rev-parse --short=7 HEAD || date +%s | tail -c 7)
+          echo "build_number=$GIT_COMMIT_SHORT" >> $GITHUB_OUTPUT
+          
+          node << EOF
+          const fs = require('fs');
+          const appJson = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+          appJson.expo.ios.buildNumber = '$GIT_COMMIT_SHORT';
+          fs.writeFileSync('app.json', JSON.stringify(appJson, null, 2) + '\\n');
+          EOF
+          
+          echo "Build number set to: $GIT_COMMIT_SHORT"
 
       - name: 🔧 Setup EAS CLI
         uses: expo/expo-github-action@v8
@@ -60,66 +66,36 @@ jobs:
 
       - name: 🏗️ Build iOS with EAS
         working-directory: ./cmd/token-app-service
-        id: build
         run: |
-          eas build --platform ios \
-            --profile production \
-            --non-interactive \
-            --auto-submit
+          eas build --platform ios --profile production --non-interactive
 
       - name: ⏳ Wait for build to complete
         working-directory: ./cmd/token-app-service
         id: wait-build
         run: |
-          echo "Waiting for build to complete..."
-          # 等待幾秒讓構建開始
           sleep 10
+          BUILD_ID=$(eas build:list --platform ios --limit 1 --json | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+          [ -z "$BUILD_ID" ] && { echo "Error: Could not find build ID"; exit 1; }
           
-          # 取得最新的構建 ID 和 URL
-          BUILD_JSON=$(eas build:list --platform ios --limit 1 --json)
-          BUILD_ID=$(echo $BUILD_JSON | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-          
-          if [ -z "$BUILD_ID" ]; then
-            echo "Error: Could not find build ID"
-            exit 1
-          fi
-          
-          echo "Build ID: $BUILD_ID"
           echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
-          
-          # 等待建置完成
           eas build:wait --id $BUILD_ID --timeout 3600
           
-          # 建置完成後，取得完整的建置資訊
           BUILD_INFO=$(eas build:view --id $BUILD_ID --json 2>/dev/null || eas build:list --platform ios --limit 1 --json)
+          BUILD_URL=$(echo $BUILD_INFO | grep -o '"artifacts":{"buildUrl":"[^"]*"' | cut -d'"' -f6 || \
+                      echo $BUILD_INFO | grep -o '"url":"[^"]*"' | head -1 | cut -d'"' -f4 || \
+                      echo $BUILD_INFO | grep -o '"buildUrl":"[^"]*"' | head -1 | cut -d'"' -f4 || \
+                      echo "https://expo.dev/accounts/tomas/projects/token-app-service/builds/$BUILD_ID")
           
-          # 嘗試從 JSON 中提取 URL（多種可能的格式）
-          BUILD_URL=$(echo $BUILD_INFO | grep -o '"artifacts":{"buildUrl":"[^"]*"' | cut -d'"' -f6)
-          
-          if [ -z "$BUILD_URL" ]; then
-            BUILD_URL=$(echo $BUILD_INFO | grep -o '"url":"[^"]*"' | head -1 | cut -d'"' -f4)
-          fi
-          
-          if [ -z "$BUILD_URL" ]; then
-            BUILD_URL=$(echo $BUILD_INFO | grep -o '"buildUrl":"[^"]*"' | head -1 | cut -d'"' -f4)
-          fi
-          
-          # 如果還是找不到，使用預設格式（從 EAS 專案 ID 構建）
-          if [ -z "$BUILD_URL" ]; then
-            # 從 app.json 或 eas.json 取得專案資訊
-            PROJECT_ID=$(grep -o '"projectId":"[^"]*"' app.json eas.json 2>/dev/null | head -1 | cut -d'"' -f4 || echo "869a711e-70db-4ee7-9c62-bda2aec26ce0")
-            BUILD_URL="https://expo.dev/accounts/tomas/projects/token-app-service/builds/$BUILD_ID"
-          fi
-          
-          echo "Build URL: $BUILD_URL"
           echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
           
-          # 將建置資訊寫入檔案
-          echo "Build ID: $BUILD_ID" > build-info.txt
-          echo "Build URL: $BUILD_URL" >> build-info.txt
-          echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> build-info.txt
-          echo "Platform: iOS" >> build-info.txt
-          echo "Profile: production" >> build-info.txt
+          cat > build-info.txt << EOF
+          Build ID: $BUILD_ID
+          Build Number: ${{ steps.set-build-number.outputs.build_number }}
+          Build URL: $BUILD_URL
+          Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          Platform: iOS
+          Profile: production
+          EOF
 
       - name: 📤 Submit to TestFlight
         working-directory: ./cmd/token-app-service
@@ -127,34 +103,24 @@ jobs:
           EXPO_NO_DOTENV: 1
           EAS_NO_VCS: 1
         run: |
-          # 確保在正確的目錄
-          echo "Current directory: $(pwd)"
-          echo "Checking project files..."
-          ls -la app.json package.json || echo "Warning: Some files not found"
-          
-          # 使用建置 ID 直接提交，避免配置讀取問題
           BUILD_ID="${{ steps.wait-build.outputs.build_id }}"
+          [ -z "$BUILD_ID" ] && BUILD_ID=$(eas build:list --platform ios --limit 1 --json | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+          [ -z "$BUILD_ID" ] && { echo "Error: Could not determine build ID"; exit 1; }
           
-          if [ -z "$BUILD_ID" ]; then
-            echo "Error: Build ID is empty"
-            echo "Trying to get latest build ID..."
-            BUILD_ID=$(eas build:list --platform ios --limit 1 --json | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-          fi
-          
-          if [ -z "$BUILD_ID" ]; then
-            echo "Error: Could not determine build ID for submission"
-            exit 1
-          fi
-          
-          echo "Submitting build ID: $BUILD_ID"
-          
-          # 使用建置 ID 提交，這樣不需要讀取完整的 Expo 配置
-          eas submit --platform ios \
+          set +e
+          SUBMIT_OUTPUT=$(eas submit --platform ios \
             --id $BUILD_ID \
             --non-interactive \
             --apple-id ${{ secrets.APPLE_ID_TOKEN_APP }} \
             --app-specific-password ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }} \
-            --asc-app-id ${{ secrets.APPLE_APP_ID_TOKEN_APP }}
+            --asc-app-id ${{ secrets.APPLE_APP_ID_TOKEN_APP }} 2>&1)
+          EXIT_CODE=$?
+          set -e
+          
+          echo "$SUBMIT_OUTPUT"
+          [ $EXIT_CODE -ne 0 ] && echo "$SUBMIT_OUTPUT" | grep -qi "already submitted" && exit 0
+          [ $EXIT_CODE -ne 0 ] && exit $EXIT_CODE
+          echo "✅ Successfully submitted to TestFlight"
 
       - name: 📝 Create build summary
         if: always()
@@ -163,6 +129,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Build Number (Git Commit) | \`${{ steps.set-build-number.outputs.build_number }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Build ID | \`${{ steps.wait-build.outputs.build_id }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Build URL | [${{ steps.wait-build.outputs.build_url }}](${{ steps.wait-build.outputs.build_url }}) |" >> $GITHUB_STEP_SUMMARY
           echo "| Status | ✅ Completed |" >> $GITHUB_STEP_SUMMARY
