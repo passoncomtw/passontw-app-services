@@ -64,20 +64,51 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN_TOKEN_APP }}
 
-      - name: 🏗️ Build iOS with EAS
+      - name: 🏗️ Build iOS with EAS and Submit to TestFlight
         working-directory: ./cmd/token-app-service
+        id: build
         run: |
-          eas build --platform ios --profile production --non-interactive
+          BUILD_OUTPUT=$(eas build --platform ios --profile production --non-interactive --auto-submit --json 2>&1 || eas build --platform ios --profile production --non-interactive --auto-submit)
+          
+          # 嘗試從輸出中提取建置 ID
+          BUILD_ID=$(echo "$BUILD_OUTPUT" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || \
+                     echo "$BUILD_OUTPUT" | grep -o 'Build ID: [a-f0-9-]*' | cut -d' ' -f3 || \
+                     echo "$BUILD_OUTPUT" | grep -o 'https://expo.dev/.*/builds/[a-f0-9-]*' | sed 's/.*builds\///')
+          
+          if [ -n "$BUILD_ID" ]; then
+            echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
+            echo "Found build ID from build output: $BUILD_ID"
+          else
+            echo "Could not extract build ID from output, will try to get it from build list"
+          fi
+          
+          echo "$BUILD_OUTPUT"
 
-      - name: ⏳ Wait for build to complete
+      - name: ⏳ Wait for build and submission to complete
         working-directory: ./cmd/token-app-service
         id: wait-build
         run: |
-          sleep 10
-          BUILD_ID=$(eas build:list --platform ios --limit 1 --json | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-          [ -z "$BUILD_ID" ] && { echo "Error: Could not find build ID"; exit 1; }
+          BUILD_ID="${{ steps.build.outputs.build_id }}"
+          
+          if [ -z "$BUILD_ID" ]; then
+            echo "Waiting for build to appear in list..."
+            for i in {1..30}; do
+              sleep 5
+              BUILD_JSON=$(eas build:list --platform ios --limit 1 --json 2>&1)
+              if [ $? -eq 0 ]; then
+                BUILD_ID=$(echo "$BUILD_JSON" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+                [ -n "$BUILD_ID" ] && break
+              else
+                echo "Warning: eas build:list failed (attempt $i/30), will retry..."
+              fi
+              echo "Attempt $i/30: Build not found yet, waiting..."
+            done
+          fi
+          
+          [ -z "$BUILD_ID" ] && { echo "Error: Could not find build ID after 30 attempts"; exit 1; }
           
           echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
+          echo "Waiting for build $BUILD_ID to complete and submit to TestFlight..."
           eas build:wait --id $BUILD_ID --timeout 3600
           
           BUILD_INFO=$(eas build:view --id $BUILD_ID --json 2>/dev/null || eas build:list --platform ios --limit 1 --json)
@@ -94,31 +125,7 @@ jobs:
           echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> build-info.txt
           echo "Platform: iOS" >> build-info.txt
           echo "Profile: production" >> build-info.txt
-
-      - name: 📤 Submit to TestFlight
-        working-directory: ./cmd/token-app-service
-        env:
-          EXPO_NO_DOTENV: 1
-          EAS_NO_VCS: 1
-        run: |
-          BUILD_ID="${{ steps.wait-build.outputs.build_id }}"
-          [ -z "$BUILD_ID" ] && BUILD_ID=$(eas build:list --platform ios --limit 1 --json | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-          [ -z "$BUILD_ID" ] && { echo "Error: Could not determine build ID"; exit 1; }
-          
-          set +e
-          SUBMIT_OUTPUT=$(eas submit --platform ios \
-            --id $BUILD_ID \
-            --non-interactive \
-            --apple-id ${{ secrets.APPLE_ID_TOKEN_APP }} \
-            --app-specific-password ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }} \
-            --asc-app-id ${{ secrets.APPLE_APP_ID_TOKEN_APP }} 2>&1)
-          EXIT_CODE=$?
-          set -e
-          
-          echo "$SUBMIT_OUTPUT"
-          [ $EXIT_CODE -ne 0 ] && echo "$SUBMIT_OUTPUT" | grep -qi "already submitted" && exit 0
-          [ $EXIT_CODE -ne 0 ] && exit $EXIT_CODE
-          echo "✅ Successfully submitted to TestFlight"
+          echo "✅ Build completed and submitted to TestFlight automatically"
 
       - name: 📝 Create build summary
         if: always()
