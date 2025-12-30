@@ -153,3 +153,43 @@ jobs:
             ./cmd/token-app-service/build-info.txt
           retention-days: 30
 
+      - name: 🧹 Clean up build artifacts
+        if: always()
+        working-directory: ./cmd/token-app-service
+        run: |
+          echo "Cleaning up build artifacts and temporary files..."
+          
+          # 清理建置產物和日誌
+          rm -rf build-info.txt
+          rm -rf .eas/build
+          rm -rf .eas/*.log
+          rm -rf ios/build
+          rm -rf android/build
+          rm -rf android/app/build
+          
+          # 清理 node_modules（下次會從快取或重新安裝）
+          rm -rf node_modules
+          
+          # 清理 Expo 相關快取和臨時檔案
+          rm -rf .expo
+          rm -rf .expo-shared
+          rm -rf dist
+          rm -rf dist-electron
+          
+          # 清理 Metro bundler 快取
+          rm -rf .metro
+          rm -rf $TMPDIR/metro-* 2>/dev/null || true
+          rm -rf $TMPDIR/haste-* 2>/dev/null || true
+          
+          # 清理其他臨時檔案
+          find . -maxdepth 3 -name "*.log" -delete 2>/dev/null || true
+          find . -maxdepth 3 -name "*.tmp" -delete 2>/dev/null || true
+          find . -maxdepth 3 -name "*.swp" -delete 2>/dev/null || true
+          find . -maxdepth 3 -name "*.swo" -delete 2>/dev/null || true
+          find . -maxdepth 3 -name ".DS_Store" -delete 2>/dev/null || true
+          
+          # 還原 app.json（移除建置時修改的 buildNumber）
+          git checkout app.json 2>/dev/null || echo "Note: app.json will be reset on next checkout"
+          
+          echo "✅ Cleanup completed. Next build will start fresh (caches preserved)."
+
