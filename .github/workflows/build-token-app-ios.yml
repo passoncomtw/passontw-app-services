@@ -69,50 +69,8 @@ jobs:
 
       - name: 🏗️ Build iOS with EAS and Submit to TestFlight
         working-directory: ./cmd/token-app-service
-        id: build
         run: |
-          BUILD_OUTPUT=$(eas build --platform ios --profile production --non-interactive --auto-submit --json 2>&1 || eas build --platform ios --profile production --non-interactive --auto-submit || echo "")
-          
-          BUILD_ID=$(echo "$BUILD_OUTPUT" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || \
-                     echo "$BUILD_OUTPUT" | grep -o 'Build ID: [a-f0-9-]*' | cut -d' ' -f3 || \
-                     echo "$BUILD_OUTPUT" | grep -o 'https://expo.dev/.*/builds/[a-f0-9-]*' | sed 's/.*builds\///' || \
-                     echo "")
-          
-          if [ -z "$BUILD_ID" ]; then
-            echo "Querying build ID from build list..."
-            sleep 5
-            for i in {1..10}; do
-              BUILD_JSON=$(eas build:list --platform ios --limit 1 --json 2>/dev/null)
-              BUILD_ID=$(echo "$BUILD_JSON" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
-              [ -n "$BUILD_ID" ] && break
-              sleep 3
-            done
-          fi
-          
-          [ -z "$BUILD_ID" ] && { echo "Error: Could not find build ID"; exit 1; }
-          
-          echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
-          echo "Found build ID: $BUILD_ID"
-          echo "Waiting for build and submission to complete..."
-          
-          eas build:wait --id $BUILD_ID --timeout 3600
-          
-          BUILD_INFO=$(eas build:view --id $BUILD_ID --json 2>/dev/null || eas build:list --platform ios --limit 1 --json)
-          BUILD_URL=$(echo "$BUILD_INFO" | grep -o '"artifacts":{"buildUrl":"[^"]*"' | cut -d'"' -f6 || \
-                      echo "$BUILD_INFO" | grep -o '"url":"[^"]*"' | head -1 | cut -d'"' -f4 || \
-                      echo "$BUILD_INFO" | grep -o '"buildUrl":"[^"]*"' | head -1 | cut -d'"' -f4 || \
-                      echo "https://expo.dev/accounts/tomas/projects/token-app-service/builds/$BUILD_ID")
-          
-          echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
-          echo "Build completed. URL: $BUILD_URL"
-          
-          echo "Build ID: $BUILD_ID" > build-info.txt
-          echo "Version: ${{ steps.set-version.outputs.version }}" >> build-info.txt
-          echo "Build Number: ${{ steps.set-version.outputs.build_number }}" >> build-info.txt
-          echo "Build URL: $BUILD_URL" >> build-info.txt
-          echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> build-info.txt
-          echo "Platform: iOS" >> build-info.txt
-          echo "Profile: production" >> build-info.txt
+          eas build --platform ios --profile production --non-interactive --auto-submit
 
       - name: 📝 Create build summary
         if: always()
@@ -124,28 +82,17 @@ jobs:
           |------|-------|
           | Version | \`${{ steps.set-version.outputs.version }}\` |
           | Build Number | \`${{ steps.set-version.outputs.build_number }}\` |
-          | Build ID | \`${{ steps.build.outputs.build_id }}\` |
-          | Build URL | [${{ steps.build.outputs.build_url }}](${{ steps.build.outputs.build_url }}) |
           
-          ### 📥 Download
-          [${{ steps.build.outputs.build_url }}](${{ steps.build.outputs.build_url }})
+          ### 📋 Build Details
+          Build has been submitted to TestFlight. Check [Expo Dashboard](https://expo.dev/accounts/tomas/projects/token-app-service/builds) for build status.
           EOF
 
-      - name: 📊 Upload build logs and info
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-build-info
-          path: |
-            ./cmd/token-app-service/build-info.txt
-          if-no-files-found: warn
-          retention-days: 30
 
       - name: 🧹 Clean up build artifacts
         if: always()
         working-directory: ./cmd/token-app-service
         run: |
-          rm -rf build-info.txt .eas/build .eas/*.log ios/build android/build android/app/build
+          rm -rf .eas/build .eas/*.log ios/build android/build android/app/build
           rm -rf node_modules .expo .expo-shared dist dist-electron .metro
           rm -rf $TMPDIR/metro-* $TMPDIR/haste-* 2>/dev/null || true
           find . -maxdepth 3 \( -name "*.log" -o -name "*.tmp" -o -name "*.swp" -o -name "*.swo" -o -name ".DS_Store" \) -delete 2>/dev/null || true
