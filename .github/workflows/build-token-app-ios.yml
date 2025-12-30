@@ -88,14 +88,12 @@ jobs:
           
           echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
           
-          cat > build-info.txt << EOF
-          Build ID: $BUILD_ID
-          Build Number: ${{ steps.set-build-number.outputs.build_number }}
-          Build URL: $BUILD_URL
-          Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          Platform: iOS
-          Profile: production
-          EOF
+          echo "Build ID: $BUILD_ID" > build-info.txt
+          echo "Build Number: ${{ steps.set-build-number.outputs.build_number }}" >> build-info.txt
+          echo "Build URL: $BUILD_URL" >> build-info.txt
+          echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> build-info.txt
+          echo "Platform: iOS" >> build-info.txt
+          echo "Profile: production" >> build-info.txt
 
       - name: 📤 Submit to TestFlight
         working-directory: ./cmd/token-app-service
@@ -125,18 +123,18 @@ jobs:
       - name: 📝 Create build summary
         if: always()
         run: |
-          echo "## 🏗️ iOS Build Information" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Build Number (Git Commit) | \`${{ steps.set-build-number.outputs.build_number }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Build ID | \`${{ steps.wait-build.outputs.build_id }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Build URL | [${{ steps.wait-build.outputs.build_url }}](${{ steps.wait-build.outputs.build_url }}) |" >> $GITHUB_STEP_SUMMARY
-          echo "| Status | ✅ Completed |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📥 Download" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "You can download the build from: [${{ steps.wait-build.outputs.build_url }}](${{ steps.wait-build.outputs.build_url }})" >> $GITHUB_STEP_SUMMARY
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🏗️ iOS Build Information
+          
+          | Item | Value |
+          |------|-------|
+          | Build Number | \`${{ steps.set-build-number.outputs.build_number }}\` |
+          | Build ID | \`${{ steps.wait-build.outputs.build_id }}\` |
+          | Build URL | [${{ steps.wait-build.outputs.build_url }}](${{ steps.wait-build.outputs.build_url }}) |
+          
+          ### 📥 Download
+          [${{ steps.wait-build.outputs.build_url }}](${{ steps.wait-build.outputs.build_url }})
+          EOF
 
       - name: 📊 Upload build logs and info
         uses: actions/upload-artifact@v4
