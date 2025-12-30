@@ -1,7 +1,7 @@
 name: Build and Deploy iOS to TestFlight
 
 on:
-  push:
+  # push:
     # tags:
     #   - 'v*.*.*'  # 當推送版本標籤時觸發，例如 v1.0.0
     # branches:
@@ -21,8 +21,6 @@ jobs:
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
@@ -42,21 +40,26 @@ jobs:
         run: |
           yarn install --frozen-lockfile || yarn install
 
-      - name: 🔢 Set build number from Git commit
+      - name: 🔢 Set version and build number
         working-directory: ./cmd/token-app-service
-        id: set-build-number
+        id: set-version
         run: |
-          GIT_COMMIT_SHORT=$(git rev-parse --short=7 HEAD || date +%s | tail -c 7)
-          echo "build_number=$GIT_COMMIT_SHORT" >> $GITHUB_OUTPUT
+          VERSION="${{ github.event.inputs.version }}"
+          [ -z "$VERSION" ] && VERSION="1.0.0"
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_number=$VERSION" >> $GITHUB_OUTPUT
           
           node << EOF
           const fs = require('fs');
           const appJson = JSON.parse(fs.readFileSync('app.json', 'utf8'));
-          appJson.expo.ios.buildNumber = '$GIT_COMMIT_SHORT';
+          appJson.expo.version = '$VERSION';
+          appJson.expo.ios.buildNumber = '$VERSION';
           fs.writeFileSync('app.json', JSON.stringify(appJson, null, 2) + '\\n');
           EOF
           
-          echo "Build number set to: $GIT_COMMIT_SHORT"
+          echo "Version set to: $VERSION"
+          echo "Build number set to: $VERSION"
 
       - name: 🔧 Setup EAS CLI
         uses: expo/expo-github-action@v8
@@ -69,19 +72,11 @@ jobs:
         id: build
         run: |
           BUILD_OUTPUT=$(eas build --platform ios --profile production --non-interactive --auto-submit --json 2>&1 || eas build --platform ios --profile production --non-interactive --auto-submit)
-          
-          # 嘗試從輸出中提取建置 ID
           BUILD_ID=$(echo "$BUILD_OUTPUT" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || \
                      echo "$BUILD_OUTPUT" | grep -o 'Build ID: [a-f0-9-]*' | cut -d' ' -f3 || \
-                     echo "$BUILD_OUTPUT" | grep -o 'https://expo.dev/.*/builds/[a-f0-9-]*' | sed 's/.*builds\///')
-          
-          if [ -n "$BUILD_ID" ]; then
-            echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
-            echo "Found build ID from build output: $BUILD_ID"
-          else
-            echo "Could not extract build ID from output, will try to get it from build list"
-          fi
-          
+                     echo "$BUILD_OUTPUT" | grep -o 'https://expo.dev/.*/builds/[a-f0-9-]*' | sed 's/.*builds\///' || \
+                     echo "")
+          [ -n "$BUILD_ID" ] && echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
           echo "$BUILD_OUTPUT"
 
       - name: ⏳ Wait for build and submission to complete
@@ -91,24 +86,17 @@ jobs:
           BUILD_ID="${{ steps.build.outputs.build_id }}"
           
           if [ -z "$BUILD_ID" ]; then
-            echo "Waiting for build to appear in list..."
             for i in {1..30}; do
               sleep 5
               BUILD_JSON=$(eas build:list --platform ios --limit 1 --json 2>&1)
-              if [ $? -eq 0 ]; then
-                BUILD_ID=$(echo "$BUILD_JSON" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-                [ -n "$BUILD_ID" ] && break
-              else
-                echo "Warning: eas build:list failed (attempt $i/30), will retry..."
-              fi
-              echo "Attempt $i/30: Build not found yet, waiting..."
+              [ $? -eq 0 ] && BUILD_ID=$(echo "$BUILD_JSON" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+              [ -n "$BUILD_ID" ] && break
             done
           fi
           
-          [ -z "$BUILD_ID" ] && { echo "Error: Could not find build ID after 30 attempts"; exit 1; }
+          [ -z "$BUILD_ID" ] && { echo "Error: Could not find build ID"; exit 1; }
           
           echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
-          echo "Waiting for build $BUILD_ID to complete and submit to TestFlight..."
           eas build:wait --id $BUILD_ID --timeout 3600
           
           BUILD_INFO=$(eas build:view --id $BUILD_ID --json 2>/dev/null || eas build:list --platform ios --limit 1 --json)
@@ -120,12 +108,12 @@ jobs:
           echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
           
           echo "Build ID: $BUILD_ID" > build-info.txt
-          echo "Build Number: ${{ steps.set-build-number.outputs.build_number }}" >> build-info.txt
+          echo "Version: ${{ steps.set-version.outputs.version }}" >> build-info.txt
+          echo "Build Number: ${{ steps.set-version.outputs.build_number }}" >> build-info.txt
           echo "Build URL: $BUILD_URL" >> build-info.txt
           echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> build-info.txt
           echo "Platform: iOS" >> build-info.txt
           echo "Profile: production" >> build-info.txt
-          echo "✅ Build completed and submitted to TestFlight automatically"
 
       - name: 📝 Create build summary
         if: always()
@@ -135,7 +123,8 @@ jobs:
           
           | Item | Value |
           |------|-------|
-          | Build Number | \`${{ steps.set-build-number.outputs.build_number }}\` |
+          | Version | \`${{ steps.set-version.outputs.version }}\` |
+          | Build Number | \`${{ steps.set-version.outputs.build_number }}\` |
           | Build ID | \`${{ steps.wait-build.outputs.build_id }}\` |
           | Build URL | [${{ steps.wait-build.outputs.build_url }}](${{ steps.wait-build.outputs.build_url }}) |
           
@@ -157,39 +146,9 @@ jobs:
         if: always()
         working-directory: ./cmd/token-app-service
         run: |
-          echo "Cleaning up build artifacts and temporary files..."
-          
-          # 清理建置產物和日誌
-          rm -rf build-info.txt
-          rm -rf .eas/build
-          rm -rf .eas/*.log
-          rm -rf ios/build
-          rm -rf android/build
-          rm -rf android/app/build
-          
-          # 清理 node_modules（下次會從快取或重新安裝）
-          rm -rf node_modules
-          
-          # 清理 Expo 相關快取和臨時檔案
-          rm -rf .expo
-          rm -rf .expo-shared
-          rm -rf dist
-          rm -rf dist-electron
-          
-          # 清理 Metro bundler 快取
-          rm -rf .metro
-          rm -rf $TMPDIR/metro-* 2>/dev/null || true
-          rm -rf $TMPDIR/haste-* 2>/dev/null || true
-          
-          # 清理其他臨時檔案
-          find . -maxdepth 3 -name "*.log" -delete 2>/dev/null || true
-          find . -maxdepth 3 -name "*.tmp" -delete 2>/dev/null || true
-          find . -maxdepth 3 -name "*.swp" -delete 2>/dev/null || true
-          find . -maxdepth 3 -name "*.swo" -delete 2>/dev/null || true
-          find . -maxdepth 3 -name ".DS_Store" -delete 2>/dev/null || true
-          
-          # 還原 app.json（移除建置時修改的 buildNumber）
-          git checkout app.json 2>/dev/null || echo "Note: app.json will be reset on next checkout"
-          
-          echo "✅ Cleanup completed. Next build will start fresh (caches preserved)."
+          rm -rf build-info.txt .eas/build .eas/*.log ios/build android/build android/app/build
+          rm -rf node_modules .expo .expo-shared dist dist-electron .metro
+          rm -rf $TMPDIR/metro-* $TMPDIR/haste-* 2>/dev/null || true
+          find . -maxdepth 3 \( -name "*.log" -o -name "*.tmp" -o -name "*.swp" -o -name "*.swo" -o -name ".DS_Store" \) -delete 2>/dev/null || true
+          git checkout app.json 2>/dev/null || true
 
