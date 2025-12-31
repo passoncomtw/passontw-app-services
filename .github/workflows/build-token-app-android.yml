@@ -1,0 +1,97 @@
+name: Build and Deploy Android to Play Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build-and-submit:
+    name: Build Android and Submit to Play Store
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: cmd/token-app-service/yarn.lock
+
+      - name: 📦 Setup Expo CLI
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          token: ${{ secrets.EXPO_TOKEN_TOKEN_APP }}
+
+      - name: 📦 Install dependencies
+        working-directory: ./cmd/token-app-service
+        run: |
+          yarn install --frozen-lockfile || yarn install
+
+      - name: 🔢 Set version and build number
+        working-directory: ./cmd/token-app-service
+        id: set-version
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          [ -z "$VERSION" ] && VERSION="1.0.0"
+          
+          VERSION_CODE=$(echo "$VERSION" | tr -d '.' | sed 's/^0*//')
+          [ -z "$VERSION_CODE" ] && VERSION_CODE="1"
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_number=$VERSION_CODE" >> $GITHUB_OUTPUT
+          
+          node << EOF
+          const fs = require('fs');
+          const appJson = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+          appJson.expo.version = '$VERSION';
+          appJson.expo.android.versionCode = parseInt('$VERSION_CODE') || 1;
+          fs.writeFileSync('app.json', JSON.stringify(appJson, null, 2) + '\\n');
+          EOF
+          
+          echo "Version set to: $VERSION"
+          echo "Version code set to: $VERSION_CODE"
+
+      - name: 🔧 Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN_TOKEN_APP }}
+
+      - name: 🏗️ Build Android with EAS and Submit to Play Store
+        working-directory: ./cmd/token-app-service
+        run: |
+          eas build --platform android --profile production --non-interactive --auto-submit
+
+      - name: 📝 Create build summary
+        if: always()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🏗️ Android Build Information
+          
+          | Item | Value |
+          |------|-------|
+          | Version | \`${{ steps.set-version.outputs.version }}\` |
+          | Version Code | \`${{ steps.set-version.outputs.build_number }}\` |
+          
+          ### 📋 Build Details
+          Build has been submitted to Google Play Store. Check [Expo Dashboard](https://expo.dev/accounts/tomas/projects/token-app-service/builds) for build status.
+          EOF
+
+      - name: 🧹 Clean up build artifacts
+        if: always()
+        working-directory: ./cmd/token-app-service
+        run: |
+          rm -rf .eas/build .eas/*.log ios/build android/build android/app/build
+          rm -rf node_modules .expo .expo-shared dist dist-electron .metro
+          rm -rf $TMPDIR/metro-* $TMPDIR/haste-* 2>/dev/null || true
+          find . -maxdepth 3 \( -name "*.log" -o -name "*.tmp" -o -name "*.swp" -o -name "*.swo" -o -name ".DS_Store" \) -delete 2>/dev/null || true
+          git checkout app.json 2>/dev/null || true
+

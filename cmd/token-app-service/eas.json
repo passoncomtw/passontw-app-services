@@ -22,6 +22,10 @@
       "ios": {
         "simulator": false,
         "credentialsSource": "remote"
+      },
+      "android": {
+        "buildType": "aab",
+        "credentialsSource": "remote"
       }
     }
   },
@@ -31,6 +35,10 @@
         "appleId": "horsekit1982@gmail.com",
         "ascAppId": "6477443899",
         "appleTeamId": "W6K7F9HNX5"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "internal"
       }
     }
   },

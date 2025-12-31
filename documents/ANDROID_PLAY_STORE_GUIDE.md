@@ -156,8 +156,14 @@ eas login
      - **免費或付費**：免費
    - 點擊「建立」
 
-3. **設定應用程式資訊**
-   - **Package Name**：`com.passon.ecoinwallet`（必須與 `app.json` 中的 `android.package` 完全一致）
+   > **注意**：建立應用程式時**不需要輸入 Package Name**。Package Name 會在您第一次上傳 APK/AAB 檔案時，自動從應用程式檔案中讀取。
+
+3. **確認 Package Name**
+   - 在建立應用程式後，Package Name 會在您第一次上傳應用程式時自動設定
+   - 上傳後，可以在「設定」→「應用程式完整性」中查看 Package Name
+   - 確認 Package Name 為 `com.passon.ecoinwallet`（必須與 `app.json` 中的 `android.package` 完全一致）
+
+4. **設定應用程式資訊**
    - **應用程式類別**：選擇適當的類別（例如：金融）
    - **內容分級**：完成內容分級問卷
 
@@ -173,13 +179,18 @@ eas login
 - **應用程式網址**：可選
 - **隱私權政策網址**：**必填**（如果應用程式處理使用者資料）
 
-#### 2.4 取得應用程式 ID
+#### 2.4 取得應用程式 ID（Package Name）
 
 1. 在 Google Play Console 中選擇您的應用程式
 2. 在左側選單中，點擊「設定」→「應用程式完整性」
-3. 記下 **應用程式 ID**（格式：`com.passon.ecoinwallet`）
+3. 在「應用程式完整性」頁面中，您會看到：
+   - **應用程式 ID**（即 Package Name，格式：`com.passon.ecoinwallet`）
+   - 此資訊會在您第一次上傳應用程式後自動顯示
 
-> **注意**：此 Package Name 已配置在 `app.json` 的 `expo.android.package` 中
+> **重要**：
+> - Package Name 會在第一次上傳 APK/AAB 時自動從應用程式檔案中讀取
+> - 確認此 Package Name 與 `app.json` 中的 `expo.android.package` 完全一致（區分大小寫）
+> - 如果 Package Name 不匹配，上傳會失敗
 
 ### 步驟 3: 配置憑證
 
@@ -259,7 +270,7 @@ Google Play App Signing 允許 Google 管理您的應用程式簽名金鑰，提
     "production": {
       "distribution": "store",
       "android": {
-        "buildType": "apk"
+        "buildType": "aab"
       }
     },
     "preview": {
@@ -280,6 +291,8 @@ Google Play App Signing 允許 Google 管理您的應用程式簽名金鑰，提
 }
 ```
 
+> **注意**：`production` profile 使用 `"buildType": "aab"`（Android App Bundle），這是 Google Play Store 推薦的格式。`preview` profile 使用 `"buildType": "apk"` 用於測試。
+
 #### 4.2 建置 Production 版本
 
 ```bash
@@ -291,7 +304,7 @@ eas build --platform android --profile production --non-interactive
 - 在 Expo 的雲端建置服務上建置您的應用程式
 - 自動包含 `pkg` 目錄中的共用模組
 - 使用遠端儲存的憑證（Keystore）
-- 產生一個 `.aab` 檔案（Android App Bundle，推薦）或 `.apk` 檔案
+- 產生一個 `.aab` 檔案（Android App Bundle）
 - 建置過程可能需要 10-20 分鐘
 
 **選項**：
@@ -300,8 +313,11 @@ eas build --platform android --profile production --non-interactive
 - `--profile production`: 使用 production build profile
 
 **建置類型**：
-- **AAB (Android App Bundle)**：推薦用於 Google Play Store
-- **APK**：用於直接安裝或測試
+- **AAB (Android App Bundle)**：`production` profile 預設產生 AAB 檔案，這是 Google Play Store 推薦的格式
+  - 檔案大小更小
+  - Google Play 會根據裝置自動優化
+  - 必須使用 AAB 格式才能上傳到 Google Play Store
+- **APK**：`preview` profile 使用 APK 格式，用於直接安裝或測試
 
 #### 4.3 提交到 Google Play Store
 
