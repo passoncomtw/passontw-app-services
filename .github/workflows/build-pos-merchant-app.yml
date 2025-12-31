@@ -1,16 +1,14 @@
 name: Build POS Merchant App
 
 on:
-  # push:
-  #   branches:
-  #     - develop
-  # pull_request:
-  #   branches:
-  #     - develop
-  workflow_dispatch:  # 允許手動觸發
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+        type: string
 
 jobs:
-  # macOS 編譯
   build-macos:
     runs-on: mac-mini-build
     
@@ -57,6 +55,24 @@ jobs:
           printf "%s" "$DEV_POS_MERCHANT_APP_ENV" > .env
         env:
           DEV_POS_MERCHANT_APP_ENV: ${{ secrets.DEV_POS_MERCHANT_APP_ENV }}
+
+      - name: 🔢 Set version
+        working-directory: cmd/pos-merchant-app
+        id: set-version
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          [ -z "$VERSION" ] && VERSION="0.0.1"
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          node << EOF
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.version = '$VERSION';
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n');
+          EOF
+          
+          echo "Version set to: $VERSION"
 
       - name: 🔧 Increase file descriptor limit
         run: |
@@ -109,7 +125,6 @@ jobs:
           path: cmd/pos-merchant-app/dist/*-arm64.zip
           if-no-files-found: error
 
-  # Windows 編譯
   build-windows:
     runs-on: mac-mini-build
     
@@ -157,6 +172,24 @@ jobs:
         env:
           DEV_POS_MERCHANT_APP_ENV: ${{ secrets.DEV_POS_MERCHANT_APP_ENV }}
 
+      - name: 🔢 Set version
+        working-directory: cmd/pos-merchant-app
+        id: set-version
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          [ -z "$VERSION" ] && VERSION="0.0.1"
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          node << EOF
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.version = '$VERSION';
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n');
+          EOF
+          
+          echo "Version set to: $VERSION"
+
       - name: 🏗️ Build Windows app
         working-directory: cmd/pos-merchant-app
         run: yarn install && yarn build:fast --win
@@ -185,7 +218,6 @@ jobs:
           path: cmd/pos-merchant-app/dist/*-ia32.exe
           if-no-files-found: error
 
-  # Linux 編譯
   build-linux:
     runs-on: mac-mini-build
     
@@ -233,6 +265,24 @@ jobs:
         env:
           DEV_POS_MERCHANT_APP_ENV: ${{ secrets.DEV_POS_MERCHANT_APP_ENV }}
 
+      - name: 🔢 Set version
+        working-directory: cmd/pos-merchant-app
+        id: set-version
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          [ -z "$VERSION" ] && VERSION="0.0.1"
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          node << EOF
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.version = '$VERSION';
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n');
+          EOF
+          
+          echo "Version set to: $VERSION"
+
       - name: 🏗️ Build Linux app
         working-directory: cmd/pos-merchant-app
         run: yarn install && yarn build:fast --linux
@@ -261,11 +311,9 @@ jobs:
           path: cmd/pos-merchant-app/dist/*.deb
           if-no-files-found: error
 
-  # 創建 Release（僅在打 tag 時執行）
   release:
     needs: [build-macos, build-windows, build-linux]
     runs-on: mac-mini-build
-    if: github.event_name != 'pull_request'
     
     permissions:
       contents: write
@@ -286,14 +334,11 @@ jobs:
           echo "=== File sizes ==="
           du -sh artifacts/*
 
-      - name: 🔖 Set release tag
-        run: echo "RELEASE_TAG=dev-${GITHUB_SHA::7}" >> $GITHUB_ENV
-
       - name: 📦 Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          name: ${{ env.RELEASE_TAG }}
+          tag_name: v${{ github.event.inputs.version || '0.0.1' }}
+          name: v${{ github.event.inputs.version || '0.0.1' }}
           files: |
             artifacts/macos-x64-dmg/*.dmg
             artifacts/macos-arm64-dmg/*.dmg
@@ -340,35 +385,4 @@ jobs:
             查看下方的自動生成的更新日誌。
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # 歸檔構建結果（非 Release 時）
-  archive:
-    needs: [build-macos, build-windows, build-linux]
-    runs-on: mac-mini-build
-    if: github.event_name == 'workflow_dispatch'
-    
-    steps:
-      - name: 📥 Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: 📊 List artifacts
-        run: |
-          echo "=== Build artifacts ==="
-          ls -R artifacts/
-          echo "=== Summary ==="
-          echo "macOS builds:"
-          ls artifacts/macos-*/
-          echo "Windows builds:"
-          ls artifacts/windows-*/
-          echo "Linux builds:"
-          ls artifacts/linux-*/
-
-      - name: 💾 Archive all builds
-        uses: actions/upload-artifact@v4
-        with:
-          name: all-builds-${{ github.sha }}
-          path: artifacts/
-          retention-days: 30
 
