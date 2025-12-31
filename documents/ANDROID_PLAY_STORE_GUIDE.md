@@ -270,7 +270,7 @@ Google Play App Signing 允許 Google 管理您的應用程式簽名金鑰，提
     "production": {
       "distribution": "store",
       "android": {
-        "buildType": "aab"
+        "buildType": "app-bundle"
       }
     },
     "preview": {
@@ -291,33 +291,65 @@ Google Play App Signing 允許 Google 管理您的應用程式簽名金鑰，提
 }
 ```
 
-> **注意**：`production` profile 使用 `"buildType": "aab"`（Android App Bundle），這是 Google Play Store 推薦的格式。`preview` profile 使用 `"buildType": "apk"` 用於測試。
+> **注意**：`production` profile 使用 `"buildType": "app-bundle"`（Android App Bundle），這是 Google Play Store 推薦的格式。`preview` profile 使用 `"buildType": "apk"` 用於測試。
 
 #### 4.2 建置 Production 版本
+
+**方法 A：只建置 AAB（推薦用於 Google Play Store）**
 
 ```bash
 cd cmd/token-app-service
 eas build --platform android --profile production --non-interactive
 ```
 
-此命令會：
-- 在 Expo 的雲端建置服務上建置您的應用程式
+此命令會產生 `.aab` 檔案（Android App Bundle），這是 Google Play Store 推薦的格式。
+
+**方法 B：只建置 APK（用於直接安裝或測試）**
+
+```bash
+cd cmd/token-app-service
+eas build --platform android --profile production-apk --non-interactive
+```
+
+此命令會產生 `.apk` 檔案，可用於直接安裝到裝置或分發給測試人員。
+
+**方法 C：同時建置 AAB 和 APK（手動執行）**
+
+如果您需要同時產生兩種格式，可以手動執行兩次建置：
+
+```bash
+cd cmd/token-app-service
+
+# 建置 AAB
+eas build --platform android --profile production --non-interactive
+
+# 建置 APK
+eas build --platform android --profile production-apk --non-interactive
+```
+
+> **注意**：CI/CD workflow 預設只建置 AAB 格式（用於 Google Play Store）。如果需要 APK，請手動執行上述命令。
+
+**建置說明**：
+- 建置過程可能需要 10-20 分鐘（每個格式）
 - 自動包含 `pkg` 目錄中的共用模組
 - 使用遠端儲存的憑證（Keystore）
-- 產生一個 `.aab` 檔案（Android App Bundle）
-- 建置過程可能需要 10-20 分鐘
 
 **選項**：
 - `--non-interactive`: 非互動式模式，使用已儲存的憑證（推薦用於 CI/CD）
 - `--local`: 在本機建置（需要 Android SDK）
-- `--profile production`: 使用 production build profile
+- `--profile production`: 使用 production build profile（產生 AAB）
+- `--profile production-apk`: 使用 production-apk build profile（產生 APK）
 
-**建置類型**：
-- **AAB (Android App Bundle)**：`production` profile 預設產生 AAB 檔案，這是 Google Play Store 推薦的格式
+**建置類型比較**：
+- **AAB (Android App Bundle)**：`production` profile 產生 AAB 檔案
+  - Google Play Store 推薦格式
   - 檔案大小更小
   - Google Play 會根據裝置自動優化
   - 必須使用 AAB 格式才能上傳到 Google Play Store
-- **APK**：`preview` profile 使用 APK 格式，用於直接安裝或測試
+- **APK**：`production-apk` profile 產生 APK 檔案
+  - 用於直接安裝到裝置
+  - 適合分發給測試人員
+  - 不需要透過 Google Play Store 安裝
 
 #### 4.3 提交到 Google Play Store
 

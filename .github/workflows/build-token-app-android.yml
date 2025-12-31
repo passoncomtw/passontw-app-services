@@ -68,8 +68,7 @@ jobs:
       - name: 🏗️ Build Android with EAS and Submit to Play Store
         working-directory: ./cmd/token-app-service
         run: |
-          eas build --platform android --profile production --non-interactive --auto-submit
-
+          eas build --platform android --profile production --non-interactive --auto-submit 
       - name: 📝 Create build summary
         if: always()
         run: |
