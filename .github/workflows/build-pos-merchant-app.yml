@@ -313,7 +313,8 @@ jobs:
 
   release:
     needs: [build-macos, build-windows, build-linux]
-    runs-on: mac-mini-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     
     permissions:
       contents: write
@@ -330,9 +331,9 @@ jobs:
       - name: 📊 List downloaded artifacts
         run: |
           echo "=== Downloaded artifacts ==="
-          ls -R artifacts/
-          echo "=== File sizes ==="
-          du -sh artifacts/*
+          find artifacts -type f -exec ls -lh {} \; || true
+          echo "=== Total size ==="
+          du -sh artifacts || true
 
       - name: 📦 Create Release
         uses: softprops/action-gh-release@v1
